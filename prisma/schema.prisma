@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL")
+}
+
+model Client {
+  id               String         @id @default(uuid())
+  name             String
+  email            String?        @unique
+  phone            String?
+  address          String?
+  comuna           String?
+  equipmentType    String?        @map("equipment_type")
+  installationDate DateTime?      @map("installation_date")
+  status           ClientStatus   @default(ACTIVE)
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  
+  maintenances     Maintenance[]
+  incidents        Incident[]
+  
+  @@map("clients")
+}
+
+model Maintenance {
+  id            String            @id @default(uuid())
+  clientId      String            @map("client_id")
+  scheduledDate DateTime          @map("scheduled_date")
+  type          MaintenanceType
+  status        MaintenanceStatus @default(PENDING)
+  completedDate DateTime?         @map("completed_date")
+  notes         String?
+  technicianId  String?           @map("technician_id")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+  
+  client        Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  @@index([scheduledDate])
+  @@index([status])
+  @@map("maintenances")
+}
+
+model Inventory {
+  id            String       @id @default(uuid())
+  equipmentType String       @map("equipment_type")
+  quantity      Int          @default(0)
+  minStock      Int          @default(10) @map("min_stock")
+  location      String?
+  lastRestocked DateTime?    @map("last_restocked")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+  
+  @@unique([equipmentType, location])
+  @@map("inventory")
+}
+
+model Incident {
+  id          String         @id @default(uuid())
+  clientId    String         @map("client_id")
+  type        IncidentType
+  description String
+  status      IncidentStatus @default(OPEN)
+  priority    Priority       @default(MEDIUM)
+  resolvedAt  DateTime?      @map("resolved_at")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+  
+  client      Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  
+  @@index([status])
+  @@index([createdAt])
+  @@map("incidents")
+}
+
+// Enums
+enum ClientStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  CANCELLED
+}
+
+enum MaintenanceType {
+  SIX_MONTHS      @map("6_months")
+  TWELVE_MONTHS   @map("12_months")
+  EIGHTEEN_MONTHS @map("18_months")
+  TWENTY_FOUR_MONTHS @map("24_months")
+}
+
+enum MaintenanceStatus {
+  PENDING
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  RESCHEDULED
+}
+
+enum IncidentType {
+  EQUIPMENT_FAILURE
+  FILTER_ISSUE
+  WATER_QUALITY
+  BILLING
+  OTHER
+}
+
+enum IncidentStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
