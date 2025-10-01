@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { ClientStatus, MaintenanceStatus, IncidentStatus } from '@prisma/client'
 
 export async function GET() {
   try {
@@ -14,11 +15,11 @@ export async function GET() {
       clientsByComuna,
     ] = await Promise.all([
       prisma.client.count(),
-      prisma.client.count({ where: { status: 'ACTIVE' } }),
-      prisma.maintenance.count({ where: { status: 'PENDING' } }),
-      prisma.maintenance.count({ where: { status: 'COMPLETED' } }),
+      prisma.client.count({ where: { status: ClientStatus.ACTIVE } }),
+      prisma.maintenance.count({ where: { status: MaintenanceStatus.PENDING } }),
+      prisma.maintenance.count({ where: { status: MaintenanceStatus.COMPLETED } }),
       prisma.inventory.findMany(),
-      prisma.incident.count({ where: { status: 'OPEN' } }),
+      prisma.incident.count({ where: { status: IncidentStatus.OPEN } }),
       prisma.client.groupBy({
         by: ['comuna'],
         _count: true,
