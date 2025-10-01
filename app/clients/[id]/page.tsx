@@ -49,6 +49,8 @@ interface ClientData {
         scheduledDate: Date | string
         type: string
         status: string
+        completedDate: Date | string | null
+        notes: string | null
       }
     }
     incidents: {

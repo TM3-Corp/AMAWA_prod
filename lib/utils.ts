@@ -72,7 +72,6 @@ export function getStatusLabel(status: string): string {
     SCHEDULED: 'Agendado',
     IN_PROGRESS: 'En Progreso',
     COMPLETED: 'Completado',
-    CANCELLED: 'Cancelado',
     RESCHEDULED: 'Reagendado',
     OPEN: 'Abierto',
     RESOLVED: 'Resuelto',
