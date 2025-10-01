@@ -26,7 +26,8 @@
     "clsx": "^2.1.1",
     "tailwind-merge": "^2.5.5",
     "recharts": "^2.13.3",
-    "lucide-react": "^0.460.0"
+    "lucide-react": "^0.460.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "^22.9.3",
