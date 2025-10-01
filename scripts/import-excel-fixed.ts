@@ -76,11 +76,12 @@ async function importClientsFromExcel() {
           comuna: row.Comuna || null,
           equipmentType: row.Equipo || null,
           installationDate,
-          status: 'ACTIVE',
+          status: 'ACTIVE' as any,
         },
       })
 
       // Create maintenance records based on maintenance dates
+      // Using Prisma enum values (not the database mapped values)
       const maintenanceDates = [
         { date: row['Fecha primera mantención (6 Meses)'], type: 'SIX_MONTHS' },
         { date: row['Fecha segunda mantención (12 Meses)'], type: 'TWELVE_MONTHS' },
