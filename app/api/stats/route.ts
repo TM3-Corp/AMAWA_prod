@@ -10,7 +10,6 @@ export async function GET() {
       pendingMaintenances,
       completedMaintenances,
       inventoryItems,
-      lowStockItems,
       openIncidents,
       clientsByComuna,
     ] = await Promise.all([
@@ -19,11 +18,6 @@ export async function GET() {
       prisma.maintenance.count({ where: { status: 'PENDING' } }),
       prisma.maintenance.count({ where: { status: 'COMPLETED' } }),
       prisma.inventory.findMany(),
-      prisma.inventory.findMany({
-        where: {
-          quantity: { lte: prisma.inventory.fields.minStock }
-        }
-      }),
       prisma.incident.count({ where: { status: 'OPEN' } }),
       prisma.client.groupBy({
         by: ['comuna'],
@@ -35,12 +29,15 @@ export async function GET() {
 
     // Calculate maintenance compliance rate
     const totalMaintenances = pendingMaintenances + completedMaintenances
-    const complianceRate = totalMaintenances > 0 
+    const complianceRate = totalMaintenances > 0
       ? Math.round((completedMaintenances / totalMaintenances) * 100)
       : 0
 
     // Calculate total inventory value
     const totalInventoryItems = inventoryItems.reduce((sum, item) => sum + item.quantity, 0)
+
+    // Filter low stock items in JavaScript
+    const lowStockItems = inventoryItems.filter(item => item.quantity <= item.minStock)
 
     return NextResponse.json({
       clients: {
