@@ -41,9 +41,17 @@ export default function Dashboard() {
     try {
       const response = await fetch('/api/stats')
       const data = await response.json()
-      setStats(data)
+
+      // Check if API returned an error
+      if (data.error || !data.clients) {
+        console.error('Stats API error:', data.error || 'Invalid data structure')
+        setStats(null)
+      } else {
+        setStats(data)
+      }
     } catch (error) {
       console.error('Error fetching stats:', error)
+      setStats(null)
     } finally {
       setLoading(false)
     }
@@ -53,6 +61,23 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center">
         <div className="text-xl text-gray-600">Cargando dashboard...</div>
+      </div>
+    )
+  }
+
+  if (!stats) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-2xl font-bold text-red-600 mb-4">Error al cargar estadísticas</div>
+          <p className="text-gray-600 mb-6">No se pudieron obtener los datos del dashboard.</p>
+          <button
+            onClick={() => { setLoading(true); fetchStats(); }}
+            className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+          >
+            Reintentar
+          </button>
+        </div>
       </div>
     )
   }
