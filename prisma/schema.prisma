@@ -16,7 +16,7 @@ model Client {
   comuna           String?
   equipmentType    String?        @map("equipment_type")
   installationDate DateTime?      @map("installation_date")
-  status           ClientStatus   @default(ACTIVE)
+  status           String         @default("ACTIVE") // TODO: Change to ClientStatus after running supabase/fix-enums.sql
   createdAt        DateTime       @default(now()) @map("created_at")
   updatedAt        DateTime       @updatedAt @map("updated_at")
   
@@ -30,8 +30,8 @@ model Maintenance {
   id            String            @id @default(uuid())
   clientId      String            @map("client_id")
   scheduledDate DateTime          @map("scheduled_date")
-  type          MaintenanceType
-  status        MaintenanceStatus @default(PENDING)
+  type          String            // TODO: Change to MaintenanceType after running supabase/fix-enums.sql
+  status        String            @default("PENDING") // TODO: Change to MaintenanceStatus after running supabase/fix-enums.sql
   completedDate DateTime?         @map("completed_date")
   notes         String?
   technicianId  String?           @map("technician_id")
@@ -61,10 +61,10 @@ model Inventory {
 model Incident {
   id          String         @id @default(uuid())
   clientId    String         @map("client_id")
-  type        IncidentType
+  type        String         // TODO: Change to IncidentType after running supabase/fix-enums.sql
   description String
-  status      IncidentStatus @default(OPEN)
-  priority    Priority       @default(MEDIUM)
+  status      String         @default("OPEN") // TODO: Change to IncidentStatus after running supabase/fix-enums.sql
+  priority    String         @default("MEDIUM") // TODO: Change to Priority after running supabase/fix-enums.sql
   resolvedAt  DateTime?      @map("resolved_at")
   createdAt   DateTime       @default(now()) @map("created_at")
   updatedAt   DateTime       @updatedAt @map("updated_at")

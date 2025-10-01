@@ -4,8 +4,6 @@ import { prisma } from '@/lib/prisma'
 export async function GET() {
   try {
     // Get all statistics in parallel
-    // NOTE: Using string literals instead of Prisma enums because database uses TEXT columns
-    // See supabase/fix-enums.sql for converting to proper ENUM types
     const [
       totalClients,
       activeClients,
@@ -16,11 +14,11 @@ export async function GET() {
       clientsByComuna,
     ] = await Promise.all([
       prisma.client.count(),
-      prisma.client.count({ where: { status: 'ACTIVE' as any } }),
-      prisma.maintenance.count({ where: { status: 'PENDING' as any } }),
-      prisma.maintenance.count({ where: { status: 'COMPLETED' as any } }),
+      prisma.client.count({ where: { status: 'ACTIVE' } }),
+      prisma.maintenance.count({ where: { status: 'PENDING' } }),
+      prisma.maintenance.count({ where: { status: 'COMPLETED' } }),
       prisma.inventory.findMany(),
-      prisma.incident.count({ where: { status: 'OPEN' as any } }),
+      prisma.incident.count({ where: { status: 'OPEN' } }),
       prisma.client.groupBy({
         by: ['comuna'],
         _count: true,
