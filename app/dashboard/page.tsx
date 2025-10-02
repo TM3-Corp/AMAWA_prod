@@ -88,9 +88,16 @@ export default function Dashboard() {
       <header className="bg-white shadow-sm">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800">Dashboard AMAWA</h1>
-              <p className="text-sm text-gray-500">Sistema de Gestión Integral</p>
+            <div className="flex items-center gap-4">
+              <img
+                src="/images/amawa_logo.png"
+                alt="AMAWA Logo"
+                className="h-12 w-auto"
+              />
+              <div>
+                <h1 className="text-2xl font-bold text-gray-800">Dashboard AMAWA</h1>
+                <p className="text-sm text-gray-500">Sistema de Gestión Integral</p>
+              </div>
             </div>
             <div className="flex space-x-4">
               <a href="/clients" className="px-4 py-2 text-gray-600 hover:text-purple-600">

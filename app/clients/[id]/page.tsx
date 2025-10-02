@@ -170,6 +170,11 @@ export default function ClientDetailPage() {
               >
                 <ArrowLeft className="w-5 h-5 text-gray-600" />
               </button>
+              <img
+                src="/images/amawa_logo.png"
+                alt="AMAWA Logo"
+                className="h-10 w-auto"
+              />
               <div>
                 <h1 className="text-2xl font-bold text-gray-800">Vista 360° del Cliente</h1>
                 <p className="text-sm text-gray-500">Información completa y estado de servicio</p>
