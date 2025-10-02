@@ -46,19 +46,61 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const data = await request.json()
-    
+
+    // Create client with core fields only (equipment/contract in separate tables)
     const client = await prisma.client.create({
       data: {
         name: data.name,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        rut: data.rut,
         email: data.email,
         phone: data.phone,
         address: data.address,
+        propertyType: data.propertyType,
+        propertyNumber: data.propertyNumber,
         comuna: data.comuna,
-        equipmentType: data.equipmentType,
-        installationDate: data.installationDate ? new Date(data.installationDate) : null,
+        contactChannel: data.contactChannel,
         status: data.status || 'ACTIVE',
       },
     })
+
+    // If equipment data provided, create equipment record
+    if (data.equipmentType || data.installationDate) {
+      await prisma.equipment.create({
+        data: {
+          clientId: client.id,
+          equipmentType: data.equipmentType,
+          serialNumber: data.serialNumber,
+          color: data.color,
+          filterType: data.filterType,
+          installationDate: data.installationDate ? new Date(data.installationDate) : null,
+          deliveryType: data.deliveryType,
+          installerTechnician: data.installerTech,
+          isActive: true,
+        },
+      })
+    }
+
+    // If contract data provided, create contract record
+    if (data.planCode || data.monthlyValueCLP || data.monthlyValueUF) {
+      await prisma.contract.create({
+        data: {
+          clientId: client.id,
+          planCode: data.planCode,
+          planType: data.planType,
+          planCurrency: data.planCurrency,
+          planValueCLP: data.planValueCLP,
+          monthlyValueCLP: data.monthlyValueCLP,
+          monthlyValueUF: data.monthlyValueUF,
+          discountPercent: data.discountPercent,
+          tokuEnabled: data.tokuEnabled || false,
+          needsInvoice: data.needsInvoice,
+          startDate: data.installationDate ? new Date(data.installationDate) : new Date(),
+          isActive: true,
+        },
+      })
+    }
 
     return NextResponse.json(client, { status: 201 })
   } catch (error) {
