@@ -210,11 +210,11 @@ graph LR
 | Vercel Bandwidth | 100 GB | ~5 GB | 95% disponible |
 | Upstash Commands | 10K/día | ~500/día | 95% disponible |
 
-**Proyección:** El plan gratuito soporta operación estable por 6-12 meses con el nivel actual de 641 clientes.
+**Proyección:** El plan gratuito soporta operación estable por 12+ meses con el nivel actual de 641 clientes y una proyección de hasta X3 usuarios. 
 
 ### Plan de Crecimiento Futuro
 
-Cuando se alcancen los límites del plan gratuito:
+En el eventual caso de superarse los límites del plan gratuito con la volumetría de usuarios actual y proyectada (hasta X3 en 12 meses), las alternativas de escalamiento son:
 
 1. **Supabase Pro:** $25 USD/mes
    - 8 GB de base de datos
