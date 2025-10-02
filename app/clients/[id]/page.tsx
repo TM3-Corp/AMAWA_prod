@@ -3,30 +3,56 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Loader2 } from 'lucide-react'
-import { ClientOverviewCard } from '@/components/clients/ClientOverviewCard'
-import { EquipmentDetails } from '@/components/clients/EquipmentDetails'
-import { ServiceStatusDashboard } from '@/components/clients/ServiceStatusDashboard'
-import { ActivityTimeline } from '@/components/clients/ActivityTimeline'
+import { ClientDetailsCard } from '@/components/clients/ClientDetailsCard'
+import { PlanInformationCard } from '@/components/clients/PlanInformationCard'
+import { EquipmentDetailsCardExtended } from '@/components/clients/EquipmentDetailsCardExtended'
+import { EditableCommentsCard } from '@/components/clients/EditableCommentsCard'
+import { HealthScoreCard } from '@/components/clients/HealthScoreCard'
+import { MaintenanceTimelineCard } from '@/components/clients/MaintenanceTimelineCard'
 
 interface ClientData {
   client: {
     id: string
     name: string
+    firstName: string | null
+    lastName: string | null
+    rut: string | null
     email: string | null
     phone: string | null
     address: string | null
     comuna: string | null
+    propertyType: string | null
+    propertyNumber: string | null
+    contactChannel: string | null
     equipmentType: string | null
+    serialNumber: string | null
+    color: string | null
+    filterType: string | null
+    deliveryType: string | null
+    installerTech: string | null
     installationDate: Date | string | null
+    planCode: string | null
+    planType: string | null
+    planCurrency: string | null
+    planValueCLP: number | null
+    monthlyValueCLP: number | null
+    monthlyValueUF: number | null
+    discountPercent: number | null
+    tokuEnabled: boolean
+    needsInvoice: boolean | null
+    generalComments: string | null
     status: string
     createdAt: Date | string
     updatedAt: Date | string
     maintenances: Array<{
       id: string
       scheduledDate: Date | string
+      actualDate: Date | string | null
       type: string
       status: string
-      completedDate: Date | string | null
+      cycleNumber: number | null
+      deviationDays: number | null
+      responseRate: string | null
       notes: string | null
     }>
     incidents: Array<{
@@ -39,18 +65,25 @@ interface ClientData {
       resolvedAt: Date | string | null
     }>
   }
+  healthScore: number
   stats: {
     maintenance: {
       total: number
       completed: number
       pending: number
+      complianceRate: number
+      avgDeviationDays: number
+      responseRates: {
+        excellent: number
+        good: number
+        fair: number
+        poor: number
+      }
       nextMaintenance?: {
         id: string
         scheduledDate: Date | string
         type: string
         status: string
-        completedDate: Date | string | null
-        notes: string | null
       }
     }
     incidents: {
@@ -157,28 +190,45 @@ export default function ClientDetailPage() {
       {/* Main Content */}
       <div className="container mx-auto px-6 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Client Info & Equipment */}
+          {/* Left Column - Personal Info & Plan */}
           <div className="lg:col-span-1 space-y-6">
-            <ClientOverviewCard client={data.client} tenure={data.stats.tenure} />
-            <EquipmentDetails client={data.client} />
+            <ClientDetailsCard client={data.client} tenure={data.stats.tenure} />
+            <PlanInformationCard
+              planCode={data.client.planCode}
+              planType={data.client.planType}
+              planCurrency={data.client.planCurrency}
+              planValueCLP={data.client.planValueCLP}
+              monthlyValueCLP={data.client.monthlyValueCLP}
+              monthlyValueUF={data.client.monthlyValueUF}
+              discountPercent={data.client.discountPercent}
+              tokuEnabled={data.client.tokuEnabled}
+              needsInvoice={data.client.needsInvoice}
+            />
+            <EquipmentDetailsCardExtended
+              equipmentType={data.client.equipmentType}
+              serialNumber={data.client.serialNumber}
+              color={data.client.color}
+              filterType={data.client.filterType}
+              deliveryType={data.client.deliveryType}
+              installerTech={data.client.installerTech}
+            />
           </div>
 
-          {/* Middle Column - Service Status */}
-          <div className="lg:col-span-1">
-            <ServiceStatusDashboard
-              maintenances={data.client.maintenances}
-              incidents={data.client.incidents}
+          {/* Middle Column - Health Score & Comments */}
+          <div className="lg:col-span-1 space-y-6">
+            <HealthScoreCard
+              healthScore={data.healthScore}
               stats={data.stats}
             />
+            <EditableCommentsCard
+              clientId={data.client.id}
+              initialComments={data.client.generalComments}
+            />
           </div>
 
-          {/* Right Column - Activity Timeline */}
+          {/* Right Column - Maintenance Timeline */}
           <div className="lg:col-span-1">
-            <ActivityTimeline
-              client={data.client}
-              maintenances={data.client.maintenances}
-              incidents={data.client.incidents}
-            />
+            <MaintenanceTimelineCard maintenances={data.client.maintenances} />
           </div>
         </div>
       </div>

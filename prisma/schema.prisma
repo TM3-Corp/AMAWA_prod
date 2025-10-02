@@ -11,59 +11,26 @@ datasource db {
 model Client {
   // IDs
   id               String         @id @default(uuid())
-  uniqueId         String?        @unique @map("unique_id")        // ID Unico from Excel
+  uniqueId         String?        @unique @map("unique_id")
 
   // Personal Info
   firstName        String?        @map("first_name")
   lastName         String?        @map("last_name")
-  name             String                                           // Full name (kept for compatibility)
+  name             String
   rut              String?        @unique
   email            String?        @unique
   phone            String?
 
   // Address
   address          String?
-  propertyType     String?        @map("property_type")            // Depto/Casa/Empresa
+  propertyType     String?        @map("property_type")
   propertyNumber   String?        @map("property_number")
   comuna           String?
 
   // Account Status
   status           String         @default("ACTIVE")
-  generalComments  String?        @map("general_comments")         // Editable field
+  generalComments  String?        @map("general_comments")
   contactChannel   String?        @map("contact_channel")
-  needsInvoice     Boolean?       @map("needs_invoice")
-  freeUntilDate    DateTime?      @map("free_until_date")
-
-  // Equipment Info
-  equipmentType    String?        @map("equipment_type")           // WHP-3200, etc
-  serialNumber     String?        @map("serial_number")
-  color            String?                                         // Blanco/Negro
-  filterType       String?        @map("filter_type")              // RO/UF
-  installationDate DateTime?      @map("installation_date")
-  deliveryType     String?        @map("delivery_type")            // Presencial/Delivery
-  installerTech    String?        @map("installer_technician")
-
-  // Plan & Pricing
-  planCode         String?        @map("plan_code")                // 3200RODE, etc
-  planType         String?        @map("plan_type")                // Mensual/Anual
-  planCurrency     String?        @map("plan_currency")            // UF/CLP
-  planValueCLP     Int?           @map("plan_value_clp")
-  monthlyValueCLP  Int?           @map("monthly_value_clp")
-  monthlyValueUF   Float?         @map("monthly_value_uf")
-  discountPercent  Float?         @map("discount_percent")
-
-  // Payment Methods
-  tokuEnabled      Boolean        @default(false) @map("toku_enabled")
-
-  // Technical Notes
-  technicianNote   String?        @map("technician_note")
-
-  // Client Start
-  startYear        Int?           @map("start_year")
-  startMonth       Int?           @map("start_month")
-
-  // Maintenance Schedule (Array of scheduled dates)
-  maintenanceDates Json?          @map("maintenance_dates")        // [date1, date2, date3, date4]
 
   // Timestamps
   createdAt        DateTime       @default(now()) @map("created_at")
@@ -72,6 +39,8 @@ model Client {
   // Relations
   maintenances     Maintenance[]
   incidents        Incident[]
+  equipment        Equipment[]
+  contracts        Contract[]
 
   @@map("clients")
 }
@@ -108,11 +77,84 @@ model Maintenance {
   // Relations
   client        Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
+  @@unique([clientId, cycleNumber], name: "unique_client_cycle")
   @@index([scheduledDate])
   @@index([actualDate])
   @@index([status])
   @@index([responseRate])
+  @@index([cycleNumber])
   @@map("maintenances")
+}
+
+model Equipment {
+  id                  String    @id @default(uuid())
+  clientId            String    @map("client_id")
+
+  // Equipment details
+  equipmentType       String?   @map("equipment_type")
+  serialNumber        String?   @map("serial_number")
+  color               String?
+  filterType          String?   @map("filter_type")
+
+  // Installation details
+  installationDate    DateTime? @map("installation_date")
+  deliveryType        String?   @map("delivery_type")
+  installerTechnician String?   @map("installer_technician")
+
+  // Active tracking (supports equipment history)
+  isActive            Boolean   @default(true) @map("is_active")
+
+  // Timestamps
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  client              Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@index([isActive])
+  @@index([filterType])
+  @@map("equipment")
+}
+
+model Contract {
+  id               String    @id @default(uuid())
+  clientId         String    @map("client_id")
+
+  // Plan details
+  planCode         String?   @map("plan_code")
+  planType         String?   @map("plan_type")
+
+  // Pricing
+  planCurrency     String?   @map("plan_currency")
+  planValueCLP     Int?      @map("plan_value_clp")
+  monthlyValueCLP  Int?      @map("monthly_value_clp")
+  monthlyValueUF   Float?    @map("monthly_value_uf")
+  discountPercent  Float?    @map("discount_percent")
+
+  // Payment methods
+  tokuEnabled      Boolean   @default(false) @map("toku_enabled")
+  needsInvoice     Boolean?  @map("needs_invoice")
+
+  // Contract period
+  startDate        DateTime? @map("start_date")
+  endDate          DateTime? @map("end_date")
+
+  // Active tracking (supports contract history)
+  isActive         Boolean   @default(true) @map("is_active")
+
+  // Timestamps
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  client           Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId])
+  @@index([isActive])
+  @@index([planCode])
+  @@index([startDate])
+  @@map("contracts")
 }
 
 model Inventory {
@@ -123,7 +165,7 @@ model Inventory {
   location      String?
   lastRestocked DateTime?    @map("last_restocked")
   updatedAt     DateTime     @updatedAt @map("updated_at")
-  
+
   @@unique([equipmentType, location])
   @@map("inventory")
 }

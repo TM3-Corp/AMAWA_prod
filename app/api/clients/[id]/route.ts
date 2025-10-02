@@ -8,7 +8,7 @@ export async function GET(
   try {
     const clientId = params.id
 
-    // Fetch client with all related data
+    // Fetch client with all related data (normalized schema)
     const client = await prisma.client.findUnique({
       where: { id: clientId },
       include: {
@@ -16,6 +16,14 @@ export async function GET(
           orderBy: { scheduledDate: 'desc' },
         },
         incidents: {
+          orderBy: { createdAt: 'desc' },
+        },
+        equipment: {
+          where: { isActive: true },  // Only fetch active equipment
+          orderBy: { createdAt: 'desc' },
+        },
+        contracts: {
+          where: { isActive: true },  // Only fetch active contract
           orderBy: { createdAt: 'desc' },
         },
       },
@@ -63,10 +71,14 @@ export async function GET(
       resolved: client.incidents.filter(i => i.status === 'RESOLVED').length,
     }
 
-    // Calculate client tenure
-    const tenure = client.installationDate
+    // Get active equipment and contract (first in array since we only fetch active ones)
+    const activeEquipment = client.equipment[0] || null
+    const activeContract = client.contracts[0] || null
+
+    // Calculate client tenure from equipment installation date
+    const tenure = activeEquipment?.installationDate
       ? Math.floor(
-          (new Date().getTime() - client.installationDate.getTime()) /
+          (new Date().getTime() - new Date(activeEquipment.installationDate).getTime()) /
             (1000 * 60 * 60 * 24 * 30)
         )
       : 0
@@ -78,8 +90,31 @@ export async function GET(
       ((100 - (incidentStats.open / (incidentStats.total || 1)) * 100) * 0.1) // 10% weight on incidents
     )
 
+    // Flatten equipment and contract data into client object for UI compatibility
+    const clientWithNormalizedData = {
+      ...client,
+      // Equipment fields (from Equipment table)
+      equipmentType: activeEquipment?.equipmentType || null,
+      serialNumber: activeEquipment?.serialNumber || null,
+      color: activeEquipment?.color || null,
+      filterType: activeEquipment?.filterType || null,
+      installationDate: activeEquipment?.installationDate || null,
+      deliveryType: activeEquipment?.deliveryType || null,
+      installerTech: activeEquipment?.installerTechnician || null,
+      // Contract fields (from Contracts table)
+      planCode: activeContract?.planCode || null,
+      planType: activeContract?.planType || null,
+      planCurrency: activeContract?.planCurrency || null,
+      planValueCLP: activeContract?.planValueCLP || null,
+      monthlyValueCLP: activeContract?.monthlyValueCLP || null,
+      monthlyValueUF: activeContract?.monthlyValueUF || null,
+      discountPercent: activeContract?.discountPercent || null,
+      tokuEnabled: activeContract?.tokuEnabled ?? false,
+      needsInvoice: activeContract?.needsInvoice ?? null,
+    }
+
     return NextResponse.json({
-      client,
+      client: clientWithNormalizedData,
       stats: {
         maintenance: maintenanceStats,
         incidents: incidentStats,
