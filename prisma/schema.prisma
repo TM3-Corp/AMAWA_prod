@@ -5,43 +5,113 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model Client {
+  // IDs
   id               String         @id @default(uuid())
-  name             String
+  uniqueId         String?        @unique @map("unique_id")        // ID Unico from Excel
+
+  // Personal Info
+  firstName        String?        @map("first_name")
+  lastName         String?        @map("last_name")
+  name             String                                           // Full name (kept for compatibility)
+  rut              String?        @unique
   email            String?        @unique
   phone            String?
+
+  // Address
   address          String?
+  propertyType     String?        @map("property_type")            // Depto/Casa/Empresa
+  propertyNumber   String?        @map("property_number")
   comuna           String?
-  equipmentType    String?        @map("equipment_type")
+
+  // Account Status
+  status           String         @default("ACTIVE")
+  generalComments  String?        @map("general_comments")         // Editable field
+  contactChannel   String?        @map("contact_channel")
+  needsInvoice     Boolean?       @map("needs_invoice")
+  freeUntilDate    DateTime?      @map("free_until_date")
+
+  // Equipment Info
+  equipmentType    String?        @map("equipment_type")           // WHP-3200, etc
+  serialNumber     String?        @map("serial_number")
+  color            String?                                         // Blanco/Negro
+  filterType       String?        @map("filter_type")              // RO/UF
   installationDate DateTime?      @map("installation_date")
-  status           String         @default("ACTIVE") // TODO: Change to ClientStatus after running supabase/fix-enums.sql
+  deliveryType     String?        @map("delivery_type")            // Presencial/Delivery
+  installerTech    String?        @map("installer_technician")
+
+  // Plan & Pricing
+  planCode         String?        @map("plan_code")                // 3200RODE, etc
+  planType         String?        @map("plan_type")                // Mensual/Anual
+  planCurrency     String?        @map("plan_currency")            // UF/CLP
+  planValueCLP     Int?           @map("plan_value_clp")
+  monthlyValueCLP  Int?           @map("monthly_value_clp")
+  monthlyValueUF   Float?         @map("monthly_value_uf")
+  discountPercent  Float?         @map("discount_percent")
+
+  // Payment Methods
+  tokuEnabled      Boolean        @default(false) @map("toku_enabled")
+
+  // Technical Notes
+  technicianNote   String?        @map("technician_note")
+
+  // Client Start
+  startYear        Int?           @map("start_year")
+  startMonth       Int?           @map("start_month")
+
+  // Maintenance Schedule (Array of scheduled dates)
+  maintenanceDates Json?          @map("maintenance_dates")        // [date1, date2, date3, date4]
+
+  // Timestamps
   createdAt        DateTime       @default(now()) @map("created_at")
   updatedAt        DateTime       @updatedAt @map("updated_at")
-  
+
+  // Relations
   maintenances     Maintenance[]
   incidents        Incident[]
-  
+
   @@map("clients")
 }
 
 model Maintenance {
   id            String            @id @default(uuid())
   clientId      String            @map("client_id")
-  scheduledDate DateTime          @map("scheduled_date")
-  type          String            // TODO: Change to MaintenanceType after running supabase/fix-enums.sql
-  status        String            @default("PENDING") // TODO: Change to MaintenanceStatus after running supabase/fix-enums.sql
+
+  // Dates
+  scheduledDate DateTime          @map("scheduled_date")    // Programmed date from Excel
+  actualDate    DateTime?         @map("actual_date")       // When it was actually done
   completedDate DateTime?         @map("completed_date")
+
+  // Type and cycle
+  type          String                                      // 6_months, 12_months, etc
+  cycleNumber   Int?              @map("cycle_number")      // 1, 2, 3, 4
+
+  // Status
+  status        String            @default("PENDING")
+
+  // Metrics (calculated)
+  deviationDays Int?              @map("deviation_days")    // actualDate - scheduledDate
+  responseRate  String?           @map("response_rate")     // EXCELLENT/GOOD/FAIR/POOR
+
+  // Notes
   notes         String?
+  observations  String?                                     // From Excel
   technicianId  String?           @map("technician_id")
+
+  // Timestamps
   createdAt     DateTime          @default(now()) @map("created_at")
   updatedAt     DateTime          @updatedAt @map("updated_at")
-  
+
+  // Relations
   client        Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  
+
   @@index([scheduledDate])
+  @@index([actualDate])
   @@index([status])
+  @@index([responseRate])
   @@map("maintenances")
 }
 

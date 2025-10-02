@@ -28,11 +28,29 @@ export async function GET(
       )
     }
 
-    // Calculate maintenance stats
+    // Calculate maintenance stats with health metrics
+    const completedMaintenances = client.maintenances.filter(m => m.status === 'COMPLETED')
+    const avgDeviation = completedMaintenances.length > 0
+      ? completedMaintenances.reduce((sum, m) => sum + (m.deviationDays || 0), 0) / completedMaintenances.length
+      : 0
+
+    // Calculate response rate distribution
+    const responseRates = {
+      excellent: client.maintenances.filter(m => m.responseRate === 'EXCELLENT').length,
+      good: client.maintenances.filter(m => m.responseRate === 'GOOD').length,
+      fair: client.maintenances.filter(m => m.responseRate === 'FAIR').length,
+      poor: client.maintenances.filter(m => m.responseRate === 'POOR').length,
+    }
+
     const maintenanceStats = {
       total: client.maintenances.length,
-      completed: client.maintenances.filter(m => m.status === 'COMPLETED').length,
+      completed: completedMaintenances.length,
       pending: client.maintenances.filter(m => m.status === 'PENDING').length,
+      complianceRate: client.maintenances.length > 0
+        ? Math.round((completedMaintenances.length / client.maintenances.length) * 100)
+        : 0,
+      avgDeviationDays: Math.round(avgDeviation),
+      responseRates,
       nextMaintenance: client.maintenances.find(
         m => m.status === 'PENDING' && m.scheduledDate > new Date()
       ),
@@ -53,6 +71,13 @@ export async function GET(
         )
       : 0
 
+    // Calculate overall health score (0-100)
+    const healthScore = Math.round(
+      (maintenanceStats.complianceRate * 0.6) + // 60% weight on compliance
+      ((100 - Math.min(Math.abs(avgDeviation) * 3, 100)) * 0.3) + // 30% weight on punctuality
+      ((100 - (incidentStats.open / (incidentStats.total || 1)) * 100) * 0.1) // 10% weight on incidents
+    )
+
     return NextResponse.json({
       client,
       stats: {
@@ -60,6 +85,7 @@ export async function GET(
         incidents: incidentStats,
         tenure,
       },
+      healthScore,
     })
   } catch (error) {
     console.error('Error fetching client details:', error)
@@ -78,20 +104,27 @@ export async function PATCH(
     const clientId = params.id
     const data = await request.json()
 
+    // Build update object with only provided fields
+    const updateData: any = {}
+
+    if (data.firstName !== undefined) updateData.firstName = data.firstName
+    if (data.lastName !== undefined) updateData.lastName = data.lastName
+    if (data.name !== undefined) updateData.name = data.name
+    if (data.email !== undefined) updateData.email = data.email
+    if (data.phone !== undefined) updateData.phone = data.phone
+    if (data.address !== undefined) updateData.address = data.address
+    if (data.comuna !== undefined) updateData.comuna = data.comuna
+    if (data.equipmentType !== undefined) updateData.equipmentType = data.equipmentType
+    if (data.status !== undefined) updateData.status = data.status
+    if (data.generalComments !== undefined) updateData.generalComments = data.generalComments
+
+    if (data.installationDate !== undefined) {
+      updateData.installationDate = data.installationDate ? new Date(data.installationDate) : null
+    }
+
     const client = await prisma.client.update({
       where: { id: clientId },
-      data: {
-        name: data.name,
-        email: data.email,
-        phone: data.phone,
-        address: data.address,
-        comuna: data.comuna,
-        equipmentType: data.equipmentType,
-        installationDate: data.installationDate
-          ? new Date(data.installationDate)
-          : undefined,
-        status: data.status,
-      },
+      data: updateData,
     })
 
     return NextResponse.json(client)
