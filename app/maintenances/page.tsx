@@ -57,7 +57,7 @@ export default function MaintenancesPage() {
 
   useEffect(() => {
     fetchMaintenances()
-  }, [filters])
+  }, [filters, viewMode])
 
   const fetchMaintenances = async () => {
     try {
@@ -69,7 +69,14 @@ export default function MaintenancesPage() {
       if (filters.search) params.append('search', filters.search)
       if (filters.dateFrom) params.append('dateFrom', filters.dateFrom)
       if (filters.dateTo) params.append('dateTo', filters.dateTo)
-      params.append('limit', '100')
+
+      // For calendar view, fetch all maintenances (no limit)
+      // For list view, use pagination
+      if (viewMode === 'list') {
+        params.append('limit', '100')
+      } else {
+        params.append('limit', '5000') // High limit for calendar to show all
+      }
 
       const response = await fetch(`/api/maintenances?${params.toString()}`)
       const data = await response.json()
