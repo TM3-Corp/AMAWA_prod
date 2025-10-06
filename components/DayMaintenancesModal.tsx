@@ -6,13 +6,21 @@ import { useRouter } from 'next/navigation'
 interface Maintenance {
   id: string
   scheduledDate: string
+  actualDate: string | null
+  completedDate: string | null
   status: string
   type: string
+  isOverdue: boolean
   client: {
+    id: string
+    name: string
     firstName: string
     lastName: string
     email: string
-    phone: string
+    phone: string | null
+    comuna: string | null
+    equipment: any[]
+    contracts: any[]
   }
 }
 
