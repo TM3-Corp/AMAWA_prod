@@ -78,7 +78,10 @@ export default function ClientsListPage() {
                 <p className="text-sm text-gray-500">Gestión de clientes AMAWA</p>
               </div>
             </div>
-            <button className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex items-center">
+            <button
+              onClick={() => router.push('/clients/new')}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex items-center"
+            >
               <Users className="w-4 h-4 mr-2" />
               Nuevo Cliente
             </button>

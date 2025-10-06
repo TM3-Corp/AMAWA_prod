@@ -139,28 +139,105 @@ export async function PATCH(
     const clientId = params.id
     const data = await request.json()
 
-    // Build update object with only provided fields
-    const updateData: any = {}
+    // Update client fields (core personal info only)
+    const clientUpdateData: any = {}
 
-    if (data.firstName !== undefined) updateData.firstName = data.firstName
-    if (data.lastName !== undefined) updateData.lastName = data.lastName
-    if (data.name !== undefined) updateData.name = data.name
-    if (data.email !== undefined) updateData.email = data.email
-    if (data.phone !== undefined) updateData.phone = data.phone
-    if (data.address !== undefined) updateData.address = data.address
-    if (data.comuna !== undefined) updateData.comuna = data.comuna
-    if (data.equipmentType !== undefined) updateData.equipmentType = data.equipmentType
-    if (data.status !== undefined) updateData.status = data.status
-    if (data.generalComments !== undefined) updateData.generalComments = data.generalComments
-
-    if (data.installationDate !== undefined) {
-      updateData.installationDate = data.installationDate ? new Date(data.installationDate) : null
-    }
+    if (data.firstName !== undefined) clientUpdateData.firstName = data.firstName
+    if (data.lastName !== undefined) clientUpdateData.lastName = data.lastName
+    if (data.name !== undefined) clientUpdateData.name = data.name
+    if (data.rut !== undefined) clientUpdateData.rut = data.rut
+    if (data.email !== undefined) clientUpdateData.email = data.email
+    if (data.phone !== undefined) clientUpdateData.phone = data.phone
+    if (data.address !== undefined) clientUpdateData.address = data.address
+    if (data.propertyType !== undefined) clientUpdateData.propertyType = data.propertyType
+    if (data.propertyNumber !== undefined) clientUpdateData.propertyNumber = data.propertyNumber
+    if (data.comuna !== undefined) clientUpdateData.comuna = data.comuna
+    if (data.status !== undefined) clientUpdateData.status = data.status
+    if (data.generalComments !== undefined) clientUpdateData.generalComments = data.generalComments
+    if (data.contactChannel !== undefined) clientUpdateData.contactChannel = data.contactChannel
 
     const client = await prisma.client.update({
       where: { id: clientId },
-      data: updateData,
+      data: clientUpdateData,
     })
+
+    // Update equipment if equipment fields provided
+    const hasEquipmentData = data.equipmentType !== undefined ||
+                             data.serialNumber !== undefined ||
+                             data.filterType !== undefined ||
+                             data.installationDate !== undefined
+
+    if (hasEquipmentData) {
+      // Find active equipment or create new one
+      const activeEquipment = await prisma.equipment.findFirst({
+        where: { clientId, isActive: true },
+      })
+
+      const equipmentData: any = {}
+      if (data.equipmentType !== undefined) equipmentData.equipmentType = data.equipmentType
+      if (data.serialNumber !== undefined) equipmentData.serialNumber = data.serialNumber
+      if (data.color !== undefined) equipmentData.color = data.color
+      if (data.filterType !== undefined) equipmentData.filterType = data.filterType
+      if (data.deliveryType !== undefined) equipmentData.deliveryType = data.deliveryType
+      if (data.installerTech !== undefined) equipmentData.installerTechnician = data.installerTech
+      if (data.installationDate !== undefined) {
+        equipmentData.installationDate = data.installationDate ? new Date(data.installationDate) : null
+      }
+
+      if (activeEquipment) {
+        await prisma.equipment.update({
+          where: { id: activeEquipment.id },
+          data: equipmentData,
+        })
+      } else {
+        await prisma.equipment.create({
+          data: {
+            clientId,
+            ...equipmentData,
+            isActive: true,
+          },
+        })
+      }
+    }
+
+    // Update contract if contract fields provided
+    const hasContractData = data.planCode !== undefined ||
+                           data.monthlyValueCLP !== undefined ||
+                           data.monthlyValueUF !== undefined
+
+    if (hasContractData) {
+      // Find active contract or create new one
+      const activeContract = await prisma.contract.findFirst({
+        where: { clientId, isActive: true },
+      })
+
+      const contractData: any = {}
+      if (data.planCode !== undefined) contractData.planCode = data.planCode
+      if (data.planType !== undefined) contractData.planType = data.planType
+      if (data.planCurrency !== undefined) contractData.planCurrency = data.planCurrency
+      if (data.planValueCLP !== undefined) contractData.planValueCLP = data.planValueCLP
+      if (data.monthlyValueCLP !== undefined) contractData.monthlyValueCLP = data.monthlyValueCLP
+      if (data.monthlyValueUF !== undefined) contractData.monthlyValueUF = data.monthlyValueUF
+      if (data.discountPercent !== undefined) contractData.discountPercent = data.discountPercent
+      if (data.tokuEnabled !== undefined) contractData.tokuEnabled = data.tokuEnabled
+      if (data.needsInvoice !== undefined) contractData.needsInvoice = data.needsInvoice
+
+      if (activeContract) {
+        await prisma.contract.update({
+          where: { id: activeContract.id },
+          data: contractData,
+        })
+      } else {
+        await prisma.contract.create({
+          data: {
+            clientId,
+            ...contractData,
+            isActive: true,
+            startDate: new Date(),
+          },
+        })
+      }
+    }
 
     return NextResponse.json(client)
   } catch (error) {

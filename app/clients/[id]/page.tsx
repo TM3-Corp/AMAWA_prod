@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Loader2 } from 'lucide-react'
+import { ArrowLeft, Loader2, Trash2 } from 'lucide-react'
 import { ClientDetailsCard } from '@/components/clients/ClientDetailsCard'
 import { PlanInformationCard } from '@/components/clients/PlanInformationCard'
 import { EquipmentDetailsCardExtended } from '@/components/clients/EquipmentDetailsCardExtended'
 import { EditableCommentsCard } from '@/components/clients/EditableCommentsCard'
 import { HealthScoreCard } from '@/components/clients/HealthScoreCard'
 import { MaintenanceTimelineCard } from '@/components/clients/MaintenanceTimelineCard'
+import { DeleteClientModal } from '@/components/clients/DeleteClientModal'
 
 interface ClientData {
   client: {
@@ -103,6 +104,7 @@ export default function ClientDetailPage() {
   const [data, setData] = useState<ClientData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
 
   useEffect(() => {
     fetchClientData()
@@ -181,11 +183,18 @@ export default function ClientDetailPage() {
               </div>
             </div>
             <div className="flex space-x-2">
-              <button className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition">
+              <button
+                onClick={() => router.push(`/clients/${clientId}/edit`)}
+                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
+              >
                 Editar
               </button>
-              <button className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
-                Acciones
+              <button
+                onClick={() => setIsDeleteModalOpen(true)}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Eliminar
               </button>
             </div>
           </div>
@@ -237,6 +246,14 @@ export default function ClientDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteClientModal
+        clientId={clientId}
+        clientName={data.client.name}
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+      />
     </div>
   )
 }

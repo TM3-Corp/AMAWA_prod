@@ -75,7 +75,8 @@ model Maintenance {
   updatedAt     DateTime          @updatedAt @map("updated_at")
 
   // Relations
-  client        Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client        Client                   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  filterUsage   MaintenanceFilterUsage[] // Track filters used in this maintenance
 
   @@unique([clientId, cycleNumber], name: "unique_client_cycle")
   @@index([scheduledDate])
@@ -159,15 +160,119 @@ model Contract {
 
 model Inventory {
   id            String       @id @default(uuid())
-  equipmentType String       @map("equipment_type")
+  equipmentType String?      @map("equipment_type")  // DEPRECATED: kept for backward compatibility
+  filterId      String?      @map("filter_id")       // NEW: Foreign key to Filter
   quantity      Int          @default(0)
   minStock      Int          @default(10) @map("min_stock")
   location      String?
   lastRestocked DateTime?    @map("last_restocked")
+  createdAt     DateTime     @default(now()) @map("created_at")
   updatedAt     DateTime     @updatedAt @map("updated_at")
 
-  @@unique([equipmentType, location])
+  // Relations
+  filter        Filter?      @relation(fields: [filterId], references: [id])
+
+  @@unique([equipmentType, location], name: "unique_equipment_location")
+  @@unique([filterId, location], name: "unique_filter_location")
+  @@index([filterId])
   @@map("inventory")
+}
+
+// ============================================
+// FILTER INVENTORY SYSTEM
+// ============================================
+
+model Filter {
+  id              String    @id @default(uuid())
+  sku             String    @unique                  // "PP-10CF", "S/P COMBI", etc.
+  name            String                             // Display name
+  description     String?                            // Details about the filter
+  category        String                             // "UF" or "RO"
+  unitCost        Float?    @map("unit_cost")        // Cost per unit (optional)
+
+  // Relations
+  inventoryItems  Inventory[]
+  packageItems    FilterPackageItem[]
+  usageRecords    MaintenanceFilterUsage[]
+
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@index([category])
+  @@index([sku])
+  @@map("filters")
+}
+
+model FilterPackage {
+  id          String    @id @default(uuid())
+  code        String    @unique                      // "1.1", "1.2", "2.1", "2.2", "5.2"
+  name        String                                 // "UF Partial", "RO Complete", etc.
+  description String?                                // Usage details
+
+  // Relations
+  items       FilterPackageItem[]
+  mappings    EquipmentFilterMapping[]
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([code])
+  @@map("filter_packages")
+}
+
+model FilterPackageItem {
+  id         String         @id @default(uuid())
+  packageId  String         @map("package_id")
+  filterId   String         @map("filter_id")
+  quantity   Int            @default(1)               // Usually 1 per filter type
+
+  // Relations
+  package    FilterPackage  @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  filter     Filter         @relation(fields: [filterId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime       @default(now()) @map("created_at")
+
+  @@unique([packageId, filterId], name: "unique_package_filter")
+  @@index([packageId])
+  @@index([filterId])
+  @@map("filter_package_items")
+}
+
+model EquipmentFilterMapping {
+  id              String         @id @default(uuid())
+  planCode        String         @map("plan_code")         // "3200RODE", "4200RODE", etc.
+  maintenanceCycle Int           @map("maintenance_cycle")  // 6, 12, 18, or 24
+  packageId       String         @map("package_id")
+
+  // Relations
+  package         FilterPackage  @relation(fields: [packageId], references: [id], onDelete: Cascade)
+
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  @@unique([planCode, maintenanceCycle], name: "unique_plan_cycle")
+  @@index([planCode])
+  @@index([maintenanceCycle])
+  @@map("equipment_filter_mappings")
+}
+
+model MaintenanceFilterUsage {
+  id             String       @id @default(uuid())
+  maintenanceId  String       @map("maintenance_id")
+  filterId       String       @map("filter_id")
+  quantityUsed   Int          @map("quantity_used")        // Number of units deducted
+  deductedAt     DateTime     @default(now()) @map("deducted_at")
+  notes          String?                                   // Optional notes
+
+  // Relations
+  maintenance    Maintenance  @relation(fields: [maintenanceId], references: [id], onDelete: Cascade)
+  filter         Filter       @relation(fields: [filterId], references: [id])
+
+  @@unique([maintenanceId, filterId], name: "unique_maintenance_filter")
+  @@index([maintenanceId])
+  @@index([filterId])
+  @@index([deductedAt])
+  @@map("maintenance_filter_usage")
 }
 
 model Incident {
