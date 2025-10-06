@@ -1,6 +1,7 @@
 'use client'
 
 import { Calendar, Clock, CheckCircle, AlertCircle, XCircle, TrendingDown, TrendingUp } from 'lucide-react'
+import { useRouter } from 'next/navigation'
 
 interface Maintenance {
   id: string
@@ -18,6 +19,8 @@ interface MaintenanceTimelineCardProps {
 }
 
 export function MaintenanceTimelineCard({ maintenances }: MaintenanceTimelineCardProps) {
+  const router = useRouter()
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'COMPLETED':
@@ -34,13 +37,17 @@ export function MaintenanceTimelineCard({ maintenances }: MaintenanceTimelineCar
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'COMPLETED':
-        return 'bg-green-50 border-green-200 text-green-700'
+        return 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100 cursor-pointer transition-colors'
       case 'PENDING':
-        return 'bg-yellow-50 border-yellow-200 text-yellow-700'
+        return 'bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100 cursor-pointer transition-colors'
+      case 'SCHEDULED':
+        return 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 cursor-pointer transition-colors'
+      case 'RESCHEDULED':
+        return 'bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100 cursor-pointer transition-colors'
       case 'CANCELLED':
-        return 'bg-red-50 border-red-200 text-red-700'
+        return 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100 cursor-pointer transition-colors'
       default:
-        return 'bg-gray-50 border-gray-200 text-gray-700'
+        return 'bg-gray-50 border-gray-200 text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors'
     }
   }
 
@@ -98,7 +105,10 @@ export function MaintenanceTimelineCard({ maintenances }: MaintenanceTimelineCar
               )}
 
               {/* Maintenance Card */}
-              <div className={`relative border rounded-lg p-4 ${getStatusColor(maintenance.status)}`}>
+              <div
+                className={`relative border rounded-lg p-4 ${getStatusColor(maintenance.status)}`}
+                onClick={() => router.push(`/maintenances/${maintenance.id}`)}
+              >
                 {/* Timeline Dot */}
                 <div className="absolute -left-3 top-4">
                   {getStatusIcon(maintenance.status)}
@@ -163,6 +173,11 @@ export function MaintenanceTimelineCard({ maintenances }: MaintenanceTimelineCar
                       </p>
                     </div>
                   )}
+
+                  {/* Click Hint */}
+                  <div className="mt-2 pt-2 border-t border-gray-200">
+                    <p className="text-xs text-gray-500 italic">Click para ver detalles →</p>
+                  </div>
                 </div>
               </div>
             </div>

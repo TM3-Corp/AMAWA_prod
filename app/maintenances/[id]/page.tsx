@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Calendar, CheckCircle, AlertCircle, Package, User, MapPin, Phone, Mail, Wrench, UserPlus } from 'lucide-react'
 import TechnicianAssignmentModal from '@/components/TechnicianAssignmentModal'
+import { MaintenanceHistoryCard } from '@/components/MaintenanceHistoryCard'
 
 interface MaintenanceDetail {
   maintenance: any
@@ -16,6 +17,16 @@ interface MaintenanceDetail {
       quantity: number
     }>
   } | null
+  clientMaintenances: Array<{
+    id: string
+    type: string
+    scheduledDate: string
+    actualDate: string | null
+    status: string
+    cycleNumber: number | null
+    deviationDays: number | null
+    responseRate: string | null
+  }>
   isOverdue: boolean
 }
 
@@ -132,7 +143,7 @@ export default function MaintenanceDetailPage() {
     )
   }
 
-  const { maintenance, requiredFilters, isOverdue } = data
+  const { maintenance, requiredFilters, clientMaintenances, isOverdue } = data
   const client = maintenance.client
   const equipment = client.equipment[0]
   const contract = client.contracts[0]
@@ -308,8 +319,14 @@ export default function MaintenanceDetailPage() {
             )}
           </div>
 
-          {/* Right Column - Client Info */}
+          {/* Right Column - Client Info & History */}
           <div className="space-y-6">
+            {/* Maintenance History Timeline */}
+            <MaintenanceHistoryCard
+              maintenances={clientMaintenances}
+              currentMaintenanceId={maintenanceId}
+            />
+
             {/* Client Card */}
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">

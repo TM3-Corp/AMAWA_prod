@@ -84,9 +84,20 @@ export async function GET(
       }
     }
 
+    // Get all maintenances for this client for the history timeline
+    const clientMaintenances = await prisma.maintenance.findMany({
+      where: {
+        clientId: maintenance.clientId
+      },
+      orderBy: {
+        scheduledDate: 'asc'
+      }
+    })
+
     return NextResponse.json({
       maintenance,
       requiredFilters,
+      clientMaintenances,
       isOverdue: maintenance.status === 'PENDING' && new Date(maintenance.scheduledDate) < new Date()
     })
   } catch (error) {
