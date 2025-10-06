@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Calendar, Filter, Search, AlertCircle, CheckCircle, Clock, CalendarDays } from 'lucide-react'
+import { ArrowLeft, Calendar, Filter, Search, AlertCircle, CheckCircle, Clock, CalendarDays, RefreshCw } from 'lucide-react'
+import MaintenanceCalendar from '@/components/MaintenanceCalendar'
+import DayMaintenancesModal from '@/components/DayMaintenancesModal'
+import BulkRescheduleModal from '@/components/BulkRescheduleModal'
 
 interface Maintenance {
   id: string
@@ -15,6 +18,9 @@ interface Maintenance {
   client: {
     id: string
     name: string
+    firstName: string
+    lastName: string
+    email: string
     phone: string | null
     comuna: string | null
     equipment: any[]
@@ -41,6 +47,13 @@ export default function MaintenancesPage() {
     upcoming: 0
   })
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list')
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [showDayModal, setShowDayModal] = useState(false)
+  const [dayModalData, setDayModalData] = useState<{ date: Date; maintenances: Maintenance[] }>({
+    date: new Date(),
+    maintenances: []
+  })
+  const [showBulkReschedule, setShowBulkReschedule] = useState(false)
 
   useEffect(() => {
     fetchMaintenances()
@@ -131,6 +144,59 @@ export default function MaintenancesPage() {
       month: 'short',
       year: 'numeric'
     })
+  }
+
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      // Only select pending and scheduled maintenances
+      const selectableIds = maintenances
+        .filter(m => m.status === 'PENDING' || m.status === 'SCHEDULED')
+        .map(m => m.id)
+      setSelectedIds(selectableIds)
+    } else {
+      setSelectedIds([])
+    }
+  }
+
+  const handleSelectOne = (id: string) => {
+    setSelectedIds(prev =>
+      prev.includes(id)
+        ? prev.filter(selectedId => selectedId !== id)
+        : [...prev, id]
+    )
+  }
+
+  const handleDayClick = (date: Date, dayMaintenances: Maintenance[]) => {
+    setDayModalData({ date, maintenances: dayMaintenances })
+    setShowDayModal(true)
+  }
+
+  const handleBulkReschedule = async (newDate: string, notes: string) => {
+    try {
+      const response = await fetch('/api/maintenances/bulk-reschedule', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          maintenanceIds: selectedIds,
+          newDate,
+          notes
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to reschedule')
+      }
+
+      // Refresh maintenances
+      await fetchMaintenances()
+      setSelectedIds([])
+      setShowBulkReschedule(false)
+    } catch (error) {
+      console.error('Error rescheduling maintenances:', error)
+      throw error
+    }
   }
 
   return (
@@ -330,6 +396,32 @@ export default function MaintenancesPage() {
           </div>
         </div>
 
+        {/* Bulk Actions Bar */}
+        {selectedIds.length > 0 && viewMode === 'list' && (
+          <div className="bg-purple-600 text-white rounded-lg shadow p-4 mb-6 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <span className="font-medium">
+                {selectedIds.length} mantención{selectedIds.length !== 1 ? 'es' : ''} seleccionada{selectedIds.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowBulkReschedule(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-white text-purple-600 rounded-lg hover:bg-gray-100 transition"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Reprogramar Seleccionadas
+              </button>
+              <button
+                onClick={() => setSelectedIds([])}
+                className="px-4 py-2 bg-purple-700 rounded-lg hover:bg-purple-800 transition"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Maintenance List */}
         {viewMode === 'list' && (
           <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -337,6 +429,14 @@ export default function MaintenancesPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
+                    <th className="px-6 py-3 text-left">
+                      <input
+                        type="checkbox"
+                        onChange={handleSelectAll}
+                        checked={selectedIds.length > 0 && selectedIds.length === maintenances.filter(m => m.status === 'PENDING' || m.status === 'SCHEDULED').length}
+                        className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                      />
+                    </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Cliente
                     </th>
@@ -360,7 +460,7 @@ export default function MaintenancesPage() {
                 <tbody className="bg-white divide-y divide-gray-200">
                   {loading ? (
                     <tr>
-                      <td colSpan={6} className="px-6 py-12 text-center">
+                      <td colSpan={7} className="px-6 py-12 text-center">
                         <div className="flex items-center justify-center">
                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
                         </div>
@@ -368,60 +468,87 @@ export default function MaintenancesPage() {
                     </tr>
                   ) : maintenances.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                      <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
                         No se encontraron mantenciones
                       </td>
                     </tr>
                   ) : (
-                    maintenances.map((maintenance) => (
-                      <tr
-                        key={maintenance.id}
-                        onClick={() => router.push(`/maintenances/${maintenance.id}`)}
-                        className="hover:bg-gray-50 cursor-pointer transition"
-                      >
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">
-                                {maintenance.client.name}
-                              </div>
-                              {maintenance.client.phone && (
-                                <div className="text-sm text-gray-500">
-                                  {maintenance.client.phone}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            {formatDate(maintenance.scheduledDate)}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm text-gray-900">
-                            {getTypeBadge(maintenance.type)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {getStatusBadge(maintenance)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {maintenance.client.comuna || '-'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              router.push(`/maintenances/${maintenance.id}`)
-                            }}
-                            className="text-purple-600 hover:text-purple-900"
+                    maintenances.map((maintenance) => {
+                      const canSelect = maintenance.status === 'PENDING' || maintenance.status === 'SCHEDULED'
+                      return (
+                        <tr
+                          key={maintenance.id}
+                          className={`hover:bg-gray-50 transition ${selectedIds.includes(maintenance.id) ? 'bg-purple-50' : ''}`}
+                        >
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.includes(maintenance.id)}
+                              onChange={() => handleSelectOne(maintenance.id)}
+                              disabled={!canSelect}
+                              className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 disabled:opacity-50"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </td>
+                          <td
+                            className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                            onClick={() => router.push(`/maintenances/${maintenance.id}`)}
                           >
-                            Ver Detalle
-                          </button>
-                        </td>
-                      </tr>
-                    ))
+                            <div className="flex items-center">
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">
+                                  {maintenance.client.name}
+                                </div>
+                                {maintenance.client.phone && (
+                                  <div className="text-sm text-gray-500">
+                                    {maintenance.client.phone}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td
+                            className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                            onClick={() => router.push(`/maintenances/${maintenance.id}`)}
+                          >
+                            <div className="text-sm text-gray-900">
+                              {formatDate(maintenance.scheduledDate)}
+                            </div>
+                          </td>
+                          <td
+                            className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                            onClick={() => router.push(`/maintenances/${maintenance.id}`)}
+                          >
+                            <span className="text-sm text-gray-900">
+                              {getTypeBadge(maintenance.type)}
+                            </span>
+                          </td>
+                          <td
+                            className="px-6 py-4 whitespace-nowrap cursor-pointer"
+                            onClick={() => router.push(`/maintenances/${maintenance.id}`)}
+                          >
+                            {getStatusBadge(maintenance)}
+                          </td>
+                          <td
+                            className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 cursor-pointer"
+                            onClick={() => router.push(`/maintenances/${maintenance.id}`)}
+                          >
+                            {maintenance.client.comuna || '-'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                router.push(`/maintenances/${maintenance.id}`)
+                              }}
+                              className="text-purple-600 hover:text-purple-900"
+                            >
+                              Ver Detalle
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })
                   )}
                 </tbody>
               </table>
@@ -429,14 +556,28 @@ export default function MaintenancesPage() {
           </div>
         )}
 
-        {/* Calendar View (placeholder) */}
+        {/* Calendar View */}
         {viewMode === 'calendar' && (
-          <div className="bg-white rounded-lg shadow p-12 text-center">
-            <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">Vista de Calendario</h3>
-            <p className="text-gray-500">Próximamente: Vista mensual de mantenciones</p>
-          </div>
+          <MaintenanceCalendar
+            maintenances={maintenances}
+            onDateClick={handleDayClick}
+          />
         )}
+
+        {/* Modals */}
+        <DayMaintenancesModal
+          date={dayModalData.date}
+          maintenances={dayModalData.maintenances}
+          isOpen={showDayModal}
+          onClose={() => setShowDayModal(false)}
+        />
+
+        <BulkRescheduleModal
+          isOpen={showBulkReschedule}
+          onClose={() => setShowBulkReschedule(false)}
+          selectedIds={selectedIds}
+          onReschedule={handleBulkReschedule}
+        />
       </div>
     </div>
   )

@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Calendar, CheckCircle, AlertCircle, Package, User, MapPin, Phone, Mail, Wrench } from 'lucide-react'
+import { ArrowLeft, Calendar, CheckCircle, AlertCircle, Package, User, MapPin, Phone, Mail, Wrench, UserPlus } from 'lucide-react'
+import TechnicianAssignmentModal from '@/components/TechnicianAssignmentModal'
 
 interface MaintenanceDetail {
   maintenance: any
@@ -27,6 +28,7 @@ export default function MaintenanceDetailPage() {
   const [loading, setLoading] = useState(true)
   const [completing, setCompleting] = useState(false)
   const [showCompleteModal, setShowCompleteModal] = useState(false)
+  const [showTechnicianModal, setShowTechnicianModal] = useState(false)
   const [completionData, setCompletionData] = useState({
     actualDate: new Date().toISOString().split('T')[0],
     notes: '',
@@ -85,6 +87,26 @@ export default function MaintenanceDetailPage() {
     }
   }
 
+  const handleAssignTechnician = async (technicianName: string) => {
+    try {
+      const response = await fetch(`/api/maintenances/${maintenanceId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ technicianId: technicianName })
+      })
+
+      if (!response.ok) {
+        throw new Error('Error al asignar técnico')
+      }
+
+      // Refresh data
+      await fetchMaintenance()
+      setShowTechnicianModal(false)
+    } catch (error: any) {
+      throw error
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center">
@@ -134,15 +156,26 @@ export default function MaintenanceDetailPage() {
                 <p className="text-sm text-gray-500">{client.name}</p>
               </div>
             </div>
-            {maintenance.status !== 'COMPLETED' && (
-              <button
-                onClick={() => setShowCompleteModal(true)}
-                className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2"
-              >
-                <CheckCircle className="w-5 h-5" />
-                Marcar como Completada
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              {maintenance.status !== 'COMPLETED' && (
+                <>
+                  <button
+                    onClick={() => setShowTechnicianModal(true)}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex items-center gap-2"
+                  >
+                    <UserPlus className="w-5 h-5" />
+                    {maintenance.technicianId ? 'Cambiar Técnico' : 'Asignar Técnico'}
+                  </button>
+                  <button
+                    onClick={() => setShowCompleteModal(true)}
+                    className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center gap-2"
+                  >
+                    <CheckCircle className="w-5 h-5" />
+                    Marcar como Completada
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </header>
@@ -192,6 +225,14 @@ export default function MaintenanceDetailPage() {
                       </span>
                     )}
                   </div>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Técnico Asignado</p>
+                  <p className="text-lg font-semibold text-gray-800">
+                    {maintenance.technicianId || (
+                      <span className="text-gray-400 text-sm">Sin asignar</span>
+                    )}
+                  </p>
                 </div>
                 {maintenance.completedDate && (
                   <div>
@@ -419,6 +460,14 @@ export default function MaintenanceDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Technician Assignment Modal */}
+      <TechnicianAssignmentModal
+        isOpen={showTechnicianModal}
+        onClose={() => setShowTechnicianModal(false)}
+        currentTechnician={maintenance.technicianId}
+        onAssign={handleAssignTechnician}
+      />
     </div>
   )
 }
