@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { X, User } from 'lucide-react'
 
 interface TechnicianAssignmentModalProps {
@@ -10,25 +10,42 @@ interface TechnicianAssignmentModalProps {
   onAssign: (technicianName: string) => Promise<void>
 }
 
-// Common technicians list (can be moved to database later)
-const COMMON_TECHNICIANS = [
-  'Juan Pérez',
-  'María González',
-  'Carlos Rodríguez',
-  'Ana Martínez',
-  'Luis Silva',
-  'Carmen Torres'
-]
-
 export default function TechnicianAssignmentModal({
   isOpen,
   onClose,
   currentTechnician,
   onAssign
 }: TechnicianAssignmentModalProps) {
+  const [technicians, setTechnicians] = useState<string[]>([])
   const [technicianName, setTechnicianName] = useState(currentTechnician || '')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // Fetch technicians from API
+  useEffect(() => {
+    if (isOpen) {
+      fetchTechnicians()
+    }
+  }, [isOpen])
+
+  // Auto-select current technician when it changes
+  useEffect(() => {
+    if (currentTechnician && isOpen) {
+      setTechnicianName(currentTechnician)
+    }
+  }, [currentTechnician, isOpen])
+
+  async function fetchTechnicians() {
+    try {
+      const response = await fetch('/api/technicians')
+      if (response.ok) {
+        const data = await response.json()
+        setTechnicians(data.technicians)
+      }
+    } catch (err) {
+      console.error('Error fetching technicians:', err)
+    }
+  }
 
   if (!isOpen) return null
 
@@ -95,35 +112,37 @@ export default function TechnicianAssignmentModal({
               required
             />
             <datalist id="technicians">
-              {COMMON_TECHNICIANS.map(tech => (
+              {technicians.map(tech => (
                 <option key={tech} value={tech} />
               ))}
             </datalist>
           </div>
 
           {/* Quick Select */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Selección Rápida
-            </label>
-            <div className="grid grid-cols-2 gap-2">
-              {COMMON_TECHNICIANS.map(tech => (
-                <button
-                  key={tech}
-                  type="button"
-                  onClick={() => setTechnicianName(tech)}
-                  className={`px-3 py-2 text-sm border rounded-lg hover:bg-purple-50 hover:border-purple-300 transition ${
-                    technicianName === tech
-                      ? 'bg-purple-100 border-purple-500 text-purple-700'
-                      : 'border-gray-300'
-                  }`}
-                  disabled={isLoading}
-                >
-                  {tech}
-                </button>
-              ))}
+          {technicians.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Selección Rápida
+              </label>
+              <div className="grid grid-cols-2 gap-2">
+                {technicians.map(tech => (
+                  <button
+                    key={tech}
+                    type="button"
+                    onClick={() => setTechnicianName(tech)}
+                    className={`px-3 py-2 text-sm border rounded-lg hover:bg-purple-50 hover:border-purple-300 transition ${
+                      technicianName === tech
+                        ? 'bg-purple-100 border-purple-500 text-purple-700'
+                        : 'border-gray-300'
+                    }`}
+                    disabled={isLoading}
+                  >
+                    {tech}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Actions */}
           <div className="flex gap-3 pt-4">

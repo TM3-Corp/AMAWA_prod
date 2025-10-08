@@ -338,3 +338,34 @@ enum Priority {
   HIGH
   CRITICAL
 }
+
+enum UserRole {
+  ADMIN       @map("admin")
+  TECHNICIAN  @map("technician")
+  MANAGER     @map("manager")
+  CLIENT      @map("client")
+}
+
+// User authentication and authorization
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  role      UserRole @default(TECHNICIAN)
+
+  // Supabase auth user ID (from auth.users)
+  authId    String?  @unique @map("auth_id")
+
+  // Status
+  isActive  Boolean  @default(true) @map("is_active")
+
+  // Metadata
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  lastLogin DateTime? @map("last_login")
+
+  @@index([email])
+  @@index([role])
+  @@index([authId])
+  @@map("users")
+}

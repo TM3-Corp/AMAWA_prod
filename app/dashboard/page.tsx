@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Users, Wrench, Package, AlertCircle, TrendingUp, Calendar } from 'lucide-react'
+import UserMenu from '@/components/auth/UserMenu'
 
 interface Stats {
   clients: {
@@ -99,7 +100,7 @@ export default function Dashboard() {
                 <p className="text-sm text-gray-500">Sistema de Gestión Integral</p>
               </div>
             </div>
-            <div className="flex space-x-4">
+            <div className="flex items-center space-x-4">
               <a href="/clients" className="px-4 py-2 text-gray-600 hover:text-purple-600">
                 Clientes
               </a>
@@ -109,6 +110,8 @@ export default function Dashboard() {
               <a href="/inventory" className="px-4 py-2 text-gray-600 hover:text-purple-600">
                 Inventario
               </a>
+              <div className="border-l border-gray-300 h-8 mx-2"></div>
+              <UserMenu />
             </div>
           </div>
         </div>
@@ -229,22 +232,22 @@ export default function Dashboard() {
           <div className="bg-white rounded-xl shadow-lg p-6">
             <h3 className="text-lg font-bold text-gray-800 mb-4">Acciones Rápidas</h3>
             <div className="grid grid-cols-2 gap-3">
-              <button className="p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition text-left">
+              <a href="/clients/new" className="p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition text-left cursor-pointer">
                 <Users className="w-5 h-5 text-purple-600 mb-2" />
                 <p className="text-sm font-medium text-gray-800">Nuevo Cliente</p>
-              </button>
-              <button className="p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition text-left">
+              </a>
+              <a href="/maintenances" className="p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition text-left cursor-pointer">
                 <Wrench className="w-5 h-5 text-blue-600 mb-2" />
-                <p className="text-sm font-medium text-gray-800">Agendar Mantención</p>
-              </button>
-              <button className="p-4 bg-green-50 rounded-lg hover:bg-green-100 transition text-left">
+                <p className="text-sm font-medium text-gray-800">Ver Mantenciones</p>
+              </a>
+              <a href="/inventory" className="p-4 bg-green-50 rounded-lg hover:bg-green-100 transition text-left cursor-pointer">
                 <Package className="w-5 h-5 text-green-600 mb-2" />
-                <p className="text-sm font-medium text-gray-800">Actualizar Stock</p>
-              </button>
-              <button className="p-4 bg-orange-50 rounded-lg hover:bg-orange-100 transition text-left">
+                <p className="text-sm font-medium text-gray-800">Ver Inventario</p>
+              </a>
+              <a href="/clients" className="p-4 bg-orange-50 rounded-lg hover:bg-orange-100 transition text-left cursor-pointer">
                 <AlertCircle className="w-5 h-5 text-orange-600 mb-2" />
-                <p className="text-sm font-medium text-gray-800">Reportar Incidente</p>
-              </button>
+                <p className="text-sm font-medium text-gray-800">Ver Clientes</p>
+              </a>
             </div>
           </div>
         </div>

@@ -192,7 +192,8 @@ export default function MaintenanceDetailPage() {
       </header>
 
       <div className="container mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           {/* Left Column - Maintenance Info */}
           <div className="lg:col-span-2 space-y-6">
             {/* Status Card */}
@@ -285,6 +286,76 @@ export default function MaintenanceDetailPage() {
               </div>
             )}
 
+            {/* Client Info - Moved here to fill space */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <User className="w-5 h-5" />
+                Información del Cliente
+              </h3>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm text-gray-500">Nombre</p>
+                  <p className="font-medium text-gray-800">{client.name}</p>
+                </div>
+                {client.phone && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-4 h-4 text-gray-400" />
+                    <p className="text-gray-600 text-sm">{client.phone}</p>
+                  </div>
+                )}
+                {client.email && (
+                  <div className="flex items-center gap-2">
+                    <Mail className="w-4 h-4 text-gray-400" />
+                    <p className="text-gray-600 text-sm">{client.email}</p>
+                  </div>
+                )}
+                {client.comuna && (
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-gray-400" />
+                    <p className="text-gray-600 text-sm">{client.comuna}</p>
+                  </div>
+                )}
+                <button
+                  onClick={() => router.push(`/clients/${client.id}`)}
+                  className="w-full mt-4 px-4 py-2 border border-purple-600 text-purple-600 rounded-lg hover:bg-purple-50 transition text-sm"
+                >
+                  Ver Perfil Completo
+                </button>
+              </div>
+            </div>
+
+            {/* Equipment Info - Moved here */}
+            {equipment && (
+              <div className="bg-white rounded-lg shadow p-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <Package className="w-5 h-5" />
+                  Equipo
+                </h3>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-sm text-gray-500">Tipo de Equipo</p>
+                    <p className="font-medium text-gray-800">{equipment.equipmentType}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-500">Tipo de Filtración</p>
+                    <p className="font-medium text-gray-800">{equipment.filterType}</p>
+                  </div>
+                  {equipment.serialNumber && (
+                    <div>
+                      <p className="text-sm text-gray-500">N° de Serie</p>
+                      <p className="font-medium text-gray-800">{equipment.serialNumber}</p>
+                    </div>
+                  )}
+                  {equipment.installerTechnician && (
+                    <div>
+                      <p className="text-sm text-gray-500">Técnico Instalador</p>
+                      <p className="font-medium text-gray-800">{equipment.installerTechnician}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Filter Usage History */}
             {maintenance.filterUsage && maintenance.filterUsage.length > 0 && (
               <div className="bg-white rounded-lg shadow p-6">
@@ -319,7 +390,7 @@ export default function MaintenanceDetailPage() {
             )}
           </div>
 
-          {/* Right Column - Client Info & History */}
+          {/* Right Column - History Timeline + Contract */}
           <div className="space-y-6">
             {/* Maintenance History Timeline */}
             <MaintenanceHistoryCard
@@ -327,76 +398,24 @@ export default function MaintenanceDetailPage() {
               currentMaintenanceId={maintenanceId}
             />
 
-            {/* Client Card */}
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                <User className="w-5 h-5" />
-                Información del Cliente
-              </h3>
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm text-gray-500">Nombre</p>
-                  <p className="font-medium text-gray-800">{client.name}</p>
-                </div>
-                {client.phone && (
-                  <div className="flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-gray-400" />
-                    <p className="text-gray-600">{client.phone}</p>
-                  </div>
-                )}
-                {client.email && (
-                  <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-gray-400" />
-                    <p className="text-gray-600">{client.email}</p>
-                  </div>
-                )}
-                {client.comuna && (
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-gray-400" />
-                    <p className="text-gray-600">{client.comuna}</p>
-                  </div>
-                )}
-                <button
-                  onClick={() => router.push(`/clients/${client.id}`)}
-                  className="w-full mt-4 px-4 py-2 border border-purple-600 text-purple-600 rounded-lg hover:bg-purple-50 transition"
-                >
-                  Ver Perfil Completo
-                </button>
-              </div>
-            </div>
-
-            {/* Equipment Card */}
-            {equipment && (
-              <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Equipo</h3>
-                <div className="space-y-2">
-                  <div>
-                    <p className="text-sm text-gray-500">Tipo de Equipo</p>
-                    <p className="font-medium text-gray-800">{equipment.equipmentType}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Tipo de Filtración</p>
-                    <p className="font-medium text-gray-800">{equipment.filterType}</p>
-                  </div>
-                  {equipment.serialNumber && (
-                    <div>
-                      <p className="text-sm text-gray-500">N° de Serie</p>
-                      <p className="font-medium text-gray-800">{equipment.serialNumber}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Contract Card */}
+            {/* Contract Card - Moved to right column */}
             {contract && (
               <div className="bg-white rounded-lg shadow p-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Contrato</h3>
-                <div className="space-y-2">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <Wrench className="w-5 h-5" />
+                  Contrato
+                </h3>
+                <div className="space-y-3">
                   <div>
                     <p className="text-sm text-gray-500">Código de Plan</p>
                     <p className="font-medium text-gray-800">{contract.planCode}</p>
                   </div>
+                  {contract.planType && (
+                    <div>
+                      <p className="text-sm text-gray-500">Tipo de Plan</p>
+                      <p className="font-medium text-gray-800">{contract.planType}</p>
+                    </div>
+                  )}
                   {contract.monthlyValueCLP && (
                     <div>
                       <p className="text-sm text-gray-500">Valor Mensual</p>
