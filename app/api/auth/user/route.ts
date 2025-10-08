@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server'
 
 const prisma = new PrismaClient()
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     const supabase = createClient()
