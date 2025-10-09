@@ -70,12 +70,17 @@ model Maintenance {
   observations  String?                                     // From Excel
   technicianId  String?           @map("technician_id")
 
+  // Delivery and work order
+  deliveryType  String?           @map("delivery_type")     // PRESENCIAL | DOMICILIO
+  workOrderId   String?           @map("work_order_id")
+
   // Timestamps
   createdAt     DateTime          @default(now()) @map("created_at")
   updatedAt     DateTime          @updatedAt @map("updated_at")
 
   // Relations
   client        Client                   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  workOrder     WorkOrder?               @relation(fields: [workOrderId], references: [id])
   filterUsage   MaintenanceFilterUsage[] // Track filters used in this maintenance
 
   @@unique([clientId, cycleNumber], name: "unique_client_cycle")
@@ -84,6 +89,8 @@ model Maintenance {
   @@index([status])
   @@index([responseRate])
   @@index([cycleNumber])
+  @@index([deliveryType])
+  @@index([workOrderId])
   @@map("maintenances")
 }
 
@@ -191,12 +198,13 @@ model Filter {
   unitCost        Float?    @map("unit_cost")        // Cost per unit (optional)
 
   // Relations
-  inventoryItems  Inventory[]
-  packageItems    FilterPackageItem[]
-  usageRecords    MaintenanceFilterUsage[]
+  inventoryItems     Inventory[]
+  packageItems       FilterPackageItem[]
+  usageRecords       MaintenanceFilterUsage[]
+  workOrderUsage     WorkOrderFilterUsage[]
 
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
 
   @@index([category])
   @@index([sku])
@@ -273,6 +281,65 @@ model MaintenanceFilterUsage {
   @@index([filterId])
   @@index([deductedAt])
   @@map("maintenance_filter_usage")
+}
+
+// ============================================
+// WORK ORDERS SYSTEM
+// ============================================
+
+model WorkOrder {
+  id                String    @id @default(uuid())
+
+  // Period
+  month             Int       // 1-12
+  year              Int       // 2025
+  deliveryType      String    // "DOMICILIO" | "PRESENCIAL"
+
+  // Status workflow: DRAFT → GENERATED → CANCELLED
+  status            String    @default("DRAFT")
+
+  // Summary data (calculated at generation)
+  totalMaintenances Int       @default(0) @map("total_maintenances")
+  packageSummary    Json?     @map("package_summary")   // {"2.1": 28, "3.1": 28, "4.1": 12}
+  filterSummary     Json?     @map("filter_summary")    // {"PP-10CF": 156, "CTO-10CF": 156}
+
+  // Delivery information
+  deliveryDate      DateTime? @map("delivery_date")     // Editable date when packages will be sent
+
+  // Timestamps
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+  generatedAt       DateTime? @map("generated_at")      // When status changed to GENERATED
+  cancelledAt       DateTime? @map("cancelled_at")      // When status changed to CANCELLED
+
+  // Relations
+  maintenances      Maintenance[]
+  filterUsage       WorkOrderFilterUsage[]
+
+  @@unique([year, month, deliveryType], name: "unique_period_delivery")
+  @@index([status])
+  @@index([year, month])
+  @@index([deliveryType])
+  @@map("work_orders")
+}
+
+model WorkOrderFilterUsage {
+  id            String     @id @default(uuid())
+  workOrderId   String     @map("work_order_id")
+  filterId      String     @map("filter_id")
+  quantityUsed  Int        @map("quantity_used")
+  deductedAt    DateTime   @default(now()) @map("deducted_at")
+  restoredAt    DateTime?  @map("restored_at")  // When work order was cancelled
+
+  // Relations
+  workOrder     WorkOrder  @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  filter        Filter     @relation(fields: [filterId], references: [id])
+
+  @@unique([workOrderId, filterId], name: "unique_workorder_filter")
+  @@index([workOrderId])
+  @@index([filterId])
+  @@index([deductedAt])
+  @@map("work_order_filter_usage")
 }
 
 model Incident {

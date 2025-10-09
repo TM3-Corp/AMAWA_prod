@@ -172,6 +172,7 @@ async function importExtendedData() {
               cycleNumber: maint.cycle,
               status: 'PENDING',
               observations: rowData['Observaciones']?.trim() || null,
+              deliveryType: normalizeDeliveryType(rowData['Delivery/presencial']),
             },
           })
           maintenancesCreated++

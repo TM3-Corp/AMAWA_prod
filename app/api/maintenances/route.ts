@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') // PENDING, SCHEDULED, IN_PROGRESS, COMPLETED, OVERDUE
     const type = searchParams.get('type') // 6_months, 12_months, etc.
     const technicianId = searchParams.get('technicianId')
+    const deliveryType = searchParams.get('deliveryType') // Delivery, Presencial
     const dateFrom = searchParams.get('dateFrom')
     const dateTo = searchParams.get('dateTo')
     const search = searchParams.get('search') // Search by client name
@@ -40,6 +41,11 @@ export async function GET(request: NextRequest) {
     // Technician filter
     if (technicianId) {
       where.technicianId = technicianId
+    }
+
+    // Delivery type filter
+    if (deliveryType) {
+      where.deliveryType = deliveryType
     }
 
     // Date range filter
