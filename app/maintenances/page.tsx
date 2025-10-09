@@ -1,590 +1,291 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
+import { ArrowLeft, ChevronLeft, ChevronRight, CheckCircle, AlertCircle, Package, TrendingUp, Loader2, Plus } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Calendar, Filter, Search, AlertCircle, CheckCircle, Clock, CalendarDays, RefreshCw } from 'lucide-react'
-import MaintenanceCalendar from '@/components/MaintenanceCalendar'
-import DayMaintenancesModal from '@/components/DayMaintenancesModal'
-import BulkRescheduleModal from '@/components/BulkRescheduleModal'
 
-interface Maintenance {
-  id: string
-  scheduledDate: string
-  actualDate: string | null
-  completedDate: string | null
-  type: string
-  status: string
-  isOverdue: boolean
-  client: {
+interface MonthData {
+  year: number
+  month: number
+  totalMaintenances: number
+  deliveryCount: number
+  presencialCount: number
+  packageSummary: Record<string, number>
+  workOrder: {
     id: string
-    name: string
-    firstName: string
-    lastName: string
-    email: string
-    phone: string | null
-    comuna: string | null
-    equipment: any[]
-    contracts: any[]
-  }
+    status: string
+    deliveryType: string
+  } | null
 }
 
-export default function MaintenancesPage() {
+const MONTHS = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+]
+
+export default function MonthlyCalendarPage() {
   const router = useRouter()
-  const [maintenances, setMaintenances] = useState<Maintenance[]>([])
+  const [monthlyData, setMonthlyData] = useState<MonthData[]>([])
   const [loading, setLoading] = useState(true)
-  const [filters, setFilters] = useState({
-    status: '',
-    type: '',
-    search: '',
-    dateFrom: '',
-    dateTo: ''
-  })
-  const [stats, setStats] = useState({
-    total: 0,
-    pending: 0,
-    overdue: 0,
-    completed: 0,
-    upcoming: 0
-  })
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list')
-  const [selectedIds, setSelectedIds] = useState<string[]>([])
-  const [showDayModal, setShowDayModal] = useState(false)
-  const [dayModalData, setDayModalData] = useState<{ date: Date; maintenances: Maintenance[] }>({
-    date: new Date(),
-    maintenances: []
-  })
-  const [showBulkReschedule, setShowBulkReschedule] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [currentYearOffset, setCurrentYearOffset] = useState(0) // -1 = prev year, 0 = current, 1 = next year
+  const [generatingWorkOrder, setGeneratingWorkOrder] = useState<string | null>(null)
+
+  const currentYear = new Date().getFullYear() + currentYearOffset
 
   useEffect(() => {
-    fetchMaintenances()
-  }, [filters, viewMode])
+    fetchMonthlyStats()
+  }, [currentYearOffset])
 
-  const fetchMaintenances = async () => {
+  async function fetchMonthlyStats() {
     try {
       setLoading(true)
-      const params = new URLSearchParams()
+      const response = await fetch(
+        `/api/calendar/monthly-stats?startYear=${currentYear - 1}&endYear=${currentYear + 1}`
+      )
 
-      if (filters.status) params.append('status', filters.status)
-      if (filters.type) params.append('type', filters.type)
-      if (filters.search) params.append('search', filters.search)
-      if (filters.dateFrom) params.append('dateFrom', filters.dateFrom)
-      if (filters.dateTo) params.append('dateTo', filters.dateTo)
-
-      // For calendar view, fetch all maintenances (no limit)
-      // For list view, use pagination
-      if (viewMode === 'list') {
-        params.append('limit', '100')
-      } else {
-        params.append('limit', '5000') // High limit for calendar to show all
+      if (!response.ok) {
+        throw new Error('Error al cargar estadísticas')
       }
 
-      const response = await fetch(`/api/maintenances?${params.toString()}`)
       const data = await response.json()
-
-      setMaintenances(data.maintenances || [])
-
-      // Calculate stats
-      const pending = data.maintenances.filter((m: Maintenance) => m.status === 'PENDING' && !m.isOverdue).length
-      const overdue = data.maintenances.filter((m: Maintenance) => m.isOverdue).length
-      const completed = data.maintenances.filter((m: Maintenance) => m.status === 'COMPLETED').length
-      const upcoming = data.maintenances.filter((m: Maintenance) =>
-        m.status === 'PENDING' && new Date(m.scheduledDate) > new Date()
-      ).length
-
-      setStats({
-        total: data.pagination.total,
-        pending,
-        overdue,
-        completed,
-        upcoming
-      })
-    } catch (error) {
-      console.error('Error fetching maintenances:', error)
+      setMonthlyData(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido')
     } finally {
       setLoading(false)
     }
   }
 
-  const getStatusBadge = (maintenance: Maintenance) => {
-    if (maintenance.isOverdue) {
-      return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-          <AlertCircle className="w-3 h-3 mr-1" />
-          Atrasada
-        </span>
-      )
-    }
+  async function handleGenerateWorkOrder(month: number, year: number, deliveryType: string) {
+    const key = `${year}-${month}-${deliveryType}`
+    setGeneratingWorkOrder(key)
 
-    const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
-      PENDING: { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-800', icon: Clock },
-      SCHEDULED: { label: 'Agendada', color: 'bg-blue-100 text-blue-800', icon: Calendar },
-      IN_PROGRESS: { label: 'En Progreso', color: 'bg-purple-100 text-purple-800', icon: Clock },
-      COMPLETED: { label: 'Completada', color: 'bg-green-100 text-green-800', icon: CheckCircle },
-      CANCELLED: { label: 'Cancelada', color: 'bg-gray-100 text-gray-800', icon: AlertCircle },
-      RESCHEDULED: { label: 'Reagendada', color: 'bg-orange-100 text-orange-800', icon: CalendarDays }
-    }
-
-    const config = statusConfig[maintenance.status] || statusConfig.PENDING
-    const Icon = config.icon
-
-    return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
-        <Icon className="w-3 h-3 mr-1" />
-        {config.label}
-      </span>
-    )
-  }
-
-  const getTypeBadge = (type: string) => {
-    const typeLabels: Record<string, string> = {
-      '6_months': '6 Meses',
-      '12_months': '12 Meses',
-      '18_months': '18 Meses',
-      '24_months': '24 Meses'
-    }
-    return typeLabels[type] || type
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('es-CL', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    })
-  }
-
-  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.checked) {
-      // Only select pending and scheduled maintenances
-      const selectableIds = maintenances
-        .filter(m => m.status === 'PENDING' || m.status === 'SCHEDULED')
-        .map(m => m.id)
-      setSelectedIds(selectableIds)
-    } else {
-      setSelectedIds([])
-    }
-  }
-
-  const handleSelectOne = (id: string) => {
-    setSelectedIds(prev =>
-      prev.includes(id)
-        ? prev.filter(selectedId => selectedId !== id)
-        : [...prev, id]
-    )
-  }
-
-  const handleDayClick = (date: Date, dayMaintenances: Maintenance[]) => {
-    setDayModalData({ date, maintenances: dayMaintenances })
-    setShowDayModal(true)
-  }
-
-  const handleBulkReschedule = async (newDate: string, notes: string) => {
     try {
-      const response = await fetch('/api/maintenances/bulk-reschedule', {
+      const response = await fetch('/api/work-orders/generate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          maintenanceIds: selectedIds,
-          newDate,
-          notes
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ month, year, deliveryType })
       })
 
       if (!response.ok) {
-        throw new Error('Failed to reschedule')
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Error al generar orden')
       }
 
-      // Refresh maintenances
-      await fetchMaintenances()
-      setSelectedIds([])
-      setShowBulkReschedule(false)
-    } catch (error) {
-      console.error('Error rescheduling maintenances:', error)
-      throw error
+      const workOrder = await response.json()
+      router.push(`/work-orders/${workOrder.id}`)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error al generar orden de trabajo')
+      setGeneratingWorkOrder(null)
     }
   }
 
+  function getMonthData(month: number, deliveryType: string): MonthData | null {
+    return monthlyData.find(
+      m => m.year === currentYear && m.month === month &&
+      (monthlyData.some(d => d.year === m.year && d.month === m.month && d.deliveryCount > 0) ?
+        (deliveryType === 'Delivery' && m.deliveryCount > 0) :
+        (deliveryType === 'Presencial' && m.presencialCount > 0))
+    ) || null
+  }
+
+  function calculatePercentage(deliveryCount: number, presencialCount: number): { delivery: number, presencial: number } {
+    const total = deliveryCount + presencialCount
+    if (total === 0) return { delivery: 0, presencial: 0 }
+
+    return {
+      delivery: Math.round((deliveryCount / total) * 100),
+      presencial: Math.round((presencialCount / total) * 100)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-gray-600">Cargando calendario...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="text-red-500 text-5xl mb-4">⚠️</div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Error</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button
+            onClick={fetchMonthlyStats}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Reintentar
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="container mx-auto px-6 py-4">
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => router.push('/dashboard')}
-                className="p-2 hover:bg-gray-100 rounded-lg transition"
-              >
-                <ArrowLeft className="w-5 h-5 text-gray-600" />
-              </button>
-              <img
-                src="/images/amawa_logo.png"
-                alt="AMAWA Logo"
-                className="h-10 w-auto"
-              />
-              <div>
-                <h1 className="text-2xl font-bold text-gray-800">Mantenciones</h1>
-                <p className="text-sm text-gray-500">Gestión de mantenciones programadas</p>
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <Link href="/dashboard" className="text-gray-400 hover:text-gray-600 transition-colors">
+                  <ArrowLeft className="w-6 h-6" />
+                </Link>
+                <h1 className="text-3xl font-bold text-gray-900">Mantenciones</h1>
               </div>
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setViewMode('list')}
-                className={`px-4 py-2 rounded-lg transition ${
-                  viewMode === 'list'
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                Lista
-              </button>
-              <button
-                onClick={() => setViewMode('calendar')}
-                className={`px-4 py-2 rounded-lg transition ${
-                  viewMode === 'calendar'
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                Calendario
-              </button>
+              <p className="text-gray-600">Vista mensual de mantenciones y órdenes de trabajo</p>
             </div>
           </div>
         </div>
-      </header>
+      </div>
 
-      {/* Stats Cards */}
-      <div className="container mx-auto px-6 py-6">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Total</p>
-                <p className="text-2xl font-bold text-gray-800">{stats.total}</p>
-              </div>
-              <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-gray-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Pendientes</p>
-                <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
-              </div>
-              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <Clock className="w-6 h-6 text-yellow-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Atrasadas</p>
-                <p className="text-2xl font-bold text-red-600">{stats.overdue}</p>
-              </div>
-              <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                <AlertCircle className="w-6 h-6 text-red-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Próximas</p>
-                <p className="text-2xl font-bold text-blue-600">{stats.upcoming}</p>
-              </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <CalendarDays className="w-6 h-6 text-blue-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Completadas</p>
-                <p className="text-2xl font-bold text-green-600">{stats.completed}</p>
-              </div>
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <CheckCircle className="w-6 h-6 text-green-600" />
-              </div>
-            </div>
+      {/* Year Navigation */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setCurrentYearOffset(currentYearOffset - 1)}
+              className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <ChevronLeft className="w-5 h-5" />
+              {currentYear - 1}
+            </button>
+            <h2 className="text-2xl font-bold text-gray-900">{currentYear}</h2>
+            <button
+              onClick={() => setCurrentYearOffset(currentYearOffset + 1)}
+              className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              {currentYear + 1}
+              <ChevronRight className="w-5 h-5" />
+            </button>
           </div>
         </div>
+      </div>
 
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <div className="flex items-center gap-4 mb-4">
-            <Filter className="w-5 h-5 text-gray-600" />
-            <h3 className="text-lg font-semibold text-gray-800">Filtros</h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Estado
-              </label>
-              <select
-                value={filters.status}
-                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              >
-                <option value="">Todos</option>
-                <option value="PENDING">Pendiente</option>
-                <option value="OVERDUE">Atrasada</option>
-                <option value="SCHEDULED">Agendada</option>
-                <option value="IN_PROGRESS">En Progreso</option>
-                <option value="COMPLETED">Completada</option>
-              </select>
-            </div>
+      {/* Monthly Timeline */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {MONTHS.map((monthName, index) => {
+            const monthNumber = index + 1
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Tipo
-              </label>
-              <select
-                value={filters.type}
-                onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              >
-                <option value="">Todos</option>
-                <option value="6_months">6 Meses</option>
-                <option value="12_months">12 Meses</option>
-                <option value="18_months">18 Meses</option>
-                <option value="24_months">24 Meses</option>
-              </select>
-            </div>
+            // Get data for both delivery types
+            const deliveryData = monthlyData.find(
+              m => m.year === currentYear && m.month === monthNumber && m.deliveryCount > 0
+            )
+            const presencialData = monthlyData.find(
+              m => m.year === currentYear && m.month === monthNumber && m.presencialCount > 0
+            )
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Desde
-              </label>
-              <input
-                type="date"
-                value={filters.dateFrom}
-                onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              />
-            </div>
+            const totalMaintenances = (deliveryData?.totalMaintenances || 0) + (presencialData?.totalMaintenances || 0)
+            const hasData = totalMaintenances > 0
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Hasta
-              </label>
-              <input
-                type="date"
-                value={filters.dateTo}
-                onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              />
-            </div>
+            const percentages = calculatePercentage(
+              deliveryData?.deliveryCount || 0,
+              presencialData?.presencialCount || 0
+            )
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Buscar Cliente
-              </label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Nombre del cliente..."
-                  value={filters.search}
-                  onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
+            // Combine package summaries
+            const allPackages = { ...(deliveryData?.packageSummary || {}), ...(presencialData?.packageSummary || {}) }
 
-        {/* Bulk Actions Bar */}
-        {selectedIds.length > 0 && viewMode === 'list' && (
-          <div className="bg-purple-600 text-white rounded-lg shadow p-4 mb-6 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <span className="font-medium">
-                {selectedIds.length} mantención{selectedIds.length !== 1 ? 'es' : ''} seleccionada{selectedIds.length !== 1 ? 's' : ''}
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setShowBulkReschedule(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-white text-purple-600 rounded-lg hover:bg-gray-100 transition"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Reprogramar Seleccionadas
-              </button>
-              <button
-                onClick={() => setSelectedIds([])}
-                className="px-4 py-2 bg-purple-700 rounded-lg hover:bg-purple-800 transition"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        )}
+            return (
+              <div key={monthNumber} className="bg-white rounded-lg border-2 border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
+                {/* Month Header */}
+                <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4">
+                  <h3 className="text-lg font-bold">{monthName} {currentYear}</h3>
+                  <p className="text-blue-100 text-sm mt-1">
+                    {totalMaintenances} mantenciones
+                  </p>
+                </div>
 
-        {/* Maintenance List */}
-        {viewMode === 'list' && (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left">
-                      <input
-                        type="checkbox"
-                        onChange={handleSelectAll}
-                        checked={selectedIds.length > 0 && selectedIds.length === maintenances.filter(m => m.status === 'PENDING' || m.status === 'SCHEDULED').length}
-                        className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                      />
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Cliente
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Fecha Programada
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Tipo
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Estado
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Comuna
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Acciones
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {loading ? (
-                    <tr>
-                      <td colSpan={7} className="px-6 py-12 text-center">
-                        <div className="flex items-center justify-center">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                {/* Content */}
+                <div className="p-4">
+                  {hasData ? (
+                    <>
+                      {/* Package Summary */}
+                      {Object.keys(allPackages).length > 0 && (
+                        <div className="mb-4">
+                          <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Paquetes</p>
+                          <div className="flex flex-wrap gap-2">
+                            {Object.entries(allPackages).map(([code, count]) => (
+                              <span key={code} className="px-3 py-1 bg-blue-50 text-blue-700 text-sm font-medium rounded-full">
+                                {count}x {code}
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                      </td>
-                    </tr>
-                  ) : maintenances.length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
-                        No se encontraron mantenciones
-                      </td>
-                    </tr>
+                      )}
+
+                      {/* Delivery Type Breakdown */}
+                      <div className="mb-4">
+                        <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Tipo de Entrega</p>
+                        <div className="space-y-2">
+                          {deliveryData && deliveryData.deliveryCount > 0 && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-gray-700">📦 Domicilio</span>
+                              <span className="text-sm font-bold text-blue-600">{percentages.delivery}%</span>
+                            </div>
+                          )}
+                          {presencialData && presencialData.presencialCount > 0 && (
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm text-gray-700">👨‍🔧 Presencial</span>
+                              <span className="text-sm font-bold text-green-600">{percentages.presencial}%</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Work Order Status */}
+                      <div className="border-t border-gray-200 pt-4">
+                        {deliveryData?.workOrder ? (
+                          <Link
+                            href={`/work-orders/${deliveryData.workOrder.id}`}
+                            className="flex items-center gap-2 text-sm text-green-700 bg-green-50 rounded-lg p-3 hover:bg-green-100 transition-colors"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                            <span className="font-medium">Mantención Realizada</span>
+                          </Link>
+                        ) : (
+                          <button
+                            onClick={() => handleGenerateWorkOrder(monthNumber, currentYear, 'Delivery')}
+                            disabled={generatingWorkOrder === `${currentYear}-${monthNumber}-Delivery`}
+                            className="w-full flex items-center justify-center gap-2 text-sm text-orange-700 bg-orange-50 rounded-lg p-3 hover:bg-orange-100 transition-colors disabled:opacity-50"
+                          >
+                            {generatingWorkOrder === `${currentYear}-${monthNumber}-Delivery` ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <span>Generando...</span>
+                              </>
+                            ) : (
+                              <>
+                                <AlertCircle className="w-4 h-4" />
+                                <span className="font-medium">Mantención Pendiente de OT</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </>
                   ) : (
-                    maintenances.map((maintenance) => {
-                      const canSelect = maintenance.status === 'PENDING' || maintenance.status === 'SCHEDULED'
-                      return (
-                        <tr
-                          key={maintenance.id}
-                          className={`hover:bg-gray-50 transition ${selectedIds.includes(maintenance.id) ? 'bg-purple-50' : ''}`}
-                        >
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <input
-                              type="checkbox"
-                              checked={selectedIds.includes(maintenance.id)}
-                              onChange={() => handleSelectOne(maintenance.id)}
-                              disabled={!canSelect}
-                              className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500 disabled:opacity-50"
-                              onClick={(e) => e.stopPropagation()}
-                            />
-                          </td>
-                          <td
-                            className="px-6 py-4 whitespace-nowrap cursor-pointer"
-                            onClick={() => router.push(`/maintenances/${maintenance.id}`)}
-                          >
-                            <div className="flex items-center">
-                              <div>
-                                <div className="text-sm font-medium text-gray-900">
-                                  {maintenance.client.name}
-                                </div>
-                                {maintenance.client.phone && (
-                                  <div className="text-sm text-gray-500">
-                                    {maintenance.client.phone}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                          <td
-                            className="px-6 py-4 whitespace-nowrap cursor-pointer"
-                            onClick={() => router.push(`/maintenances/${maintenance.id}`)}
-                          >
-                            <div className="text-sm text-gray-900">
-                              {formatDate(maintenance.scheduledDate)}
-                            </div>
-                          </td>
-                          <td
-                            className="px-6 py-4 whitespace-nowrap cursor-pointer"
-                            onClick={() => router.push(`/maintenances/${maintenance.id}`)}
-                          >
-                            <span className="text-sm text-gray-900">
-                              {getTypeBadge(maintenance.type)}
-                            </span>
-                          </td>
-                          <td
-                            className="px-6 py-4 whitespace-nowrap cursor-pointer"
-                            onClick={() => router.push(`/maintenances/${maintenance.id}`)}
-                          >
-                            {getStatusBadge(maintenance)}
-                          </td>
-                          <td
-                            className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 cursor-pointer"
-                            onClick={() => router.push(`/maintenances/${maintenance.id}`)}
-                          >
-                            {maintenance.client.comuna || '-'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                router.push(`/maintenances/${maintenance.id}`)
-                              }}
-                              className="text-purple-600 hover:text-purple-900"
-                            >
-                              Ver Detalle
-                            </button>
-                          </td>
-                        </tr>
-                      )
-                    })
+                    <div className="text-center py-8">
+                      <Package className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500">Sin mantenciones programadas</p>
+                    </div>
                   )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* Calendar View */}
-        {viewMode === 'calendar' && (
-          <MaintenanceCalendar
-            maintenances={maintenances}
-            onDateClick={handleDayClick}
-          />
-        )}
-
-        {/* Modals */}
-        <DayMaintenancesModal
-          date={dayModalData.date}
-          maintenances={dayModalData.maintenances}
-          isOpen={showDayModal}
-          onClose={() => setShowDayModal(false)}
-        />
-
-        <BulkRescheduleModal
-          isOpen={showBulkReschedule}
-          onClose={() => setShowBulkReschedule(false)}
-          selectedIds={selectedIds}
-          onReschedule={handleBulkReschedule}
-        />
+                </div>
+              </div>
+            )
+          })}
+        </div>
       </div>
     </div>
   )
