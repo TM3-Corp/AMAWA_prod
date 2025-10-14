@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
+import { calculateEffectiveCycle } from '@/lib/calculate-effective-cycle'
 
 const prisma = new PrismaClient()
 
@@ -181,7 +182,7 @@ async function calculateFilterNeeds(maintenances: any[]) {
 
   maintenances.forEach(maintenance => {
     const planCode = maintenance.client.contracts[0]?.planCode
-    const cycle = maintenance.cycleNumber ? maintenance.cycleNumber * 6 : 6
+    const cycle = calculateEffectiveCycle(maintenance.cycleNumber)
 
     if (planCode && cycle) {
       const key = `${planCode}-${cycle}`

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { PrismaClient } from '@prisma/client'
+import { calculateEffectiveCycle } from '@/lib/calculate-effective-cycle'
 
 const prisma = new PrismaClient()
 
@@ -91,7 +92,7 @@ export async function POST(request: NextRequest) {
     maintenances.forEach(maintenance => {
       const contract = maintenance.client.contracts[0]
       const planCode = contract?.planCode
-      const cycle = maintenance.cycleNumber ? maintenance.cycleNumber * 6 : 6
+      const cycle = calculateEffectiveCycle(maintenance.cycleNumber)
 
       // Find matching mapping
       const mapping = mappings.find(
