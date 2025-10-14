@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { FileText, Plus, Calendar, Package, CheckCircle, XCircle, Clock, Loader2 } from 'lucide-react'
+import PlanReconciliationModal from '@/components/work-orders/PlanReconciliationModal'
 
 interface WorkOrder {
   id: string
@@ -55,6 +56,10 @@ export default function WorkOrdersPage() {
   const [genDeliveryType, setGenDeliveryType] = useState('Delivery')
   const [generating, setGenerating] = useState(false)
 
+  // Reconciliation state
+  const [unmappedMaintenances, setUnmappedMaintenances] = useState<any[]>([])
+  const [showReconciliationModal, setShowReconciliationModal] = useState(false)
+
   useEffect(() => {
     fetchWorkOrders()
   }, [])
@@ -80,6 +85,45 @@ export default function WorkOrdersPage() {
   async function handleGenerateWorkOrder() {
     try {
       setGenerating(true)
+
+      // Step 1: Preview to check for unmapped maintenances
+      const previewResponse = await fetch('/api/work-orders/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          month: genMonth,
+          year: genYear,
+          deliveryType: genDeliveryType
+        })
+      })
+
+      if (!previewResponse.ok) {
+        const errorData = await previewResponse.json()
+        throw new Error(errorData.error || 'Error al validar orden de trabajo')
+      }
+
+      const previewData = await previewResponse.json()
+
+      // Step 2: Check if there are unmapped maintenances
+      if (previewData.unmapped && previewData.unmapped.length > 0) {
+        // Show reconciliation modal
+        setUnmappedMaintenances(previewData.unmapped)
+        setShowReconciliationModal(true)
+        setGenerating(false)
+        return
+      }
+
+      // Step 3: If no unmapped, proceed to generate
+      await generateWorkOrderDirect()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Error al generar orden de trabajo')
+      setGenerating(false)
+    }
+  }
+
+  async function generateWorkOrderDirect() {
+    try {
+      setGenerating(true)
       const response = await fetch('/api/work-orders/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -100,8 +144,9 @@ export default function WorkOrdersPage() {
       // Refresh list
       await fetchWorkOrders()
 
-      // Close modal
+      // Close modals
       setShowGenerateModal(false)
+      setShowReconciliationModal(false)
 
       // Redirect to the new work order
       window.location.href = `/work-orders/${newWorkOrder.id}`
@@ -110,6 +155,11 @@ export default function WorkOrdersPage() {
     } finally {
       setGenerating(false)
     }
+  }
+
+  function handleReconciliationComplete() {
+    // After reconciliation, generate the work order
+    generateWorkOrderDirect()
   }
 
   // Filter work orders
@@ -394,6 +444,18 @@ export default function WorkOrdersPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Reconciliation Modal */}
+      {showReconciliationModal && unmappedMaintenances.length > 0 && (
+        <PlanReconciliationModal
+          unmappedMaintenances={unmappedMaintenances}
+          onClose={() => {
+            setShowReconciliationModal(false)
+            setShowGenerateModal(false)
+          }}
+          onComplete={handleReconciliationComplete}
+        />
       )}
     </div>
   )
