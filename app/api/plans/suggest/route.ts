@@ -94,8 +94,8 @@ function calculateSimilarity(str1: string, str2: string): number {
   // Check for common characters (simple approach)
   const s1Set = new Set(s1.split(''))
   const s2Set = new Set(s2.split(''))
-  const intersection = new Set([...s1Set].filter(x => s2Set.has(x)))
-  const union = new Set([...s1Set, ...s2Set])
+  const intersection = new Set(Array.from(s1Set).filter(x => s2Set.has(x)))
+  const union = new Set([...Array.from(s1Set), ...Array.from(s2Set)])
 
   return (intersection.size / union.size) * 50
 }
