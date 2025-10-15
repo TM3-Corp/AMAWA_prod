@@ -94,16 +94,30 @@ export default function PlanReconciliationModal({
     try {
       // If permanent update requested, update the contract
       if (updatePermanently) {
-        const contract = await fetch(`/api/clients/${currentMaintenance.clientId}`)
-          .then(res => res.json())
-          .then(data => data.contracts?.find((c: any) => c.isActive))
+        const clientResponse = await fetch(`/api/clients/${currentMaintenance.clientId}`)
+
+        if (!clientResponse.ok) {
+          throw new Error('Error al obtener datos del cliente')
+        }
+
+        const clientData = await clientResponse.json()
+        const contract = clientData.client?.contracts?.find((c: any) => c.isActive)
 
         if (contract) {
-          await fetch(`/api/contracts/${contract.id}/update-plan`, {
+          const updateResponse = await fetch(`/api/contracts/${contract.id}/update-plan`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ planCode: selectedPlan })
           })
+
+          if (!updateResponse.ok) {
+            const errorData = await updateResponse.json()
+            throw new Error(errorData.error || 'Error al actualizar contrato')
+          }
+
+          console.log(`✅ Contract updated: ${currentMaintenance.planCode} → ${selectedPlan}`)
+        } else {
+          console.warn('⚠️ No active contract found for client:', currentMaintenance.clientId)
         }
       }
 
