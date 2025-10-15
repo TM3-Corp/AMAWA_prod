@@ -186,6 +186,36 @@ model Inventory {
 }
 
 // ============================================
+// EQUIPMENT INVENTORY SYSTEM
+// ============================================
+
+model EquipmentInventory {
+  id              String    @id @default(uuid())
+
+  // Equipment details
+  equipmentModel  String    @map("equipment_model")    // "WHP-3200 UF", "WHP-4200 RO Negro", "WHP-4230", "Llave"
+  quantity        Int       @default(0)                // Current stock (excludes equipment assigned to clients)
+  minStock        Int       @default(5) @map("min_stock")
+  location        String                               // "Bodega Principal", "Bodega Secundaria"
+
+  // Financial
+  unitCost        Float?    @map("unit_cost")          // Cost per unit in CLP
+
+  // Tracking
+  lastRestocked   DateTime? @map("last_restocked")
+  notes           String?                              // Optional notes
+
+  // Timestamps
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@unique([equipmentModel, location], name: "unique_equipment_model_location")
+  @@index([equipmentModel])
+  @@index([location])
+  @@map("equipment_inventory")
+}
+
+// ============================================
 // FILTER INVENTORY SYSTEM
 // ============================================
 
