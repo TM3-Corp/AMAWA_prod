@@ -82,11 +82,19 @@ export async function PATCH(
     // Check if user is admin
     const dbUser = await prisma.user.findUnique({
       where: { authId: user.id },
-      select: { role: true },
+      select: { role: true, id: true },
     })
 
     if (dbUser?.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Forbidden - Admin only' }, { status: 403 })
+    }
+
+    // Prevent admin from modifying themselves (role/status changes)
+    if (dbUser.id === params.id) {
+      return NextResponse.json(
+        { error: 'No puedes modificar tu propio usuario' },
+        { status: 400 }
+      )
     }
 
     const { name, role, isActive } = await request.json()
