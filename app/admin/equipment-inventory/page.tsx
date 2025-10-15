@@ -3,12 +3,12 @@
 import { useState, useEffect } from 'react'
 import LockedField from '@/components/admin/LockedField'
 import {
-  ExclamationTriangleIcon,
-  CheckCircleIcon,
-  ArrowPathIcon,
-  ChevronDownIcon,
-  ChevronRightIcon
-} from '@heroicons/react/24/outline'
+  AlertTriangle,
+  CheckCircle,
+  RotateCw,
+  ChevronDown,
+  ChevronRight
+} from 'lucide-react'
 
 interface EquipmentInventory {
   id: string
@@ -125,21 +125,21 @@ export default function EquipmentInventoryPage() {
       case 'LOW':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-            <ExclamationTriangleIcon className="h-4 w-4" />
+            <AlertTriangle className="h-4 w-4" />
             Bajo
           </span>
         )
       case 'WARNING':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-            <ExclamationTriangleIcon className="h-4 w-4" />
+            <AlertTriangle className="h-4 w-4" />
             Advertencia
           </span>
         )
       case 'OK':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-            <CheckCircleIcon className="h-4 w-4" />
+            <CheckCircle className="h-4 w-4" />
             OK
           </span>
         )
@@ -292,7 +292,7 @@ export default function EquipmentInventoryPage() {
       <div className="min-h-screen bg-gray-50 p-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-center py-12">
-            <ArrowPathIcon className="h-8 w-8 animate-spin text-blue-600" />
+            <RotateCw className="h-8 w-8 animate-spin text-blue-600" />
             <span className="ml-3 text-gray-600">Cargando inventario...</span>
           </div>
         </div>
@@ -392,9 +392,9 @@ export default function EquipmentInventoryPage() {
                 >
                   <div className="flex items-center gap-4">
                     {expandedDispensadores.has(dispensador) ? (
-                      <ChevronDownIcon className="h-6 w-6 text-gray-500" />
+                      <ChevronDown className="h-6 w-6 text-gray-500" />
                     ) : (
-                      <ChevronRightIcon className="h-6 w-6 text-gray-500" />
+                      <ChevronRight className="h-6 w-6 text-gray-500" />
                     )}
                     <div className="text-left">
                       <h2 className="text-2xl font-bold text-gray-900">{dispensador}</h2>
@@ -404,7 +404,7 @@ export default function EquipmentInventoryPage() {
                     </div>
                   </div>
                   {items.some(item => item.status === 'LOW') && (
-                    <ExclamationTriangleIcon className="h-6 w-6 text-red-500" />
+                    <AlertTriangle className="h-6 w-6 text-red-500" />
                   )}
                 </button>
 
@@ -425,9 +425,9 @@ export default function EquipmentInventoryPage() {
                             >
                               <div className="flex items-center gap-4">
                                 {expandedFiltracion.has(filtracionKey) ? (
-                                  <ChevronDownIcon className="h-5 w-5 text-gray-400" />
+                                  <ChevronDown className="h-5 w-5 text-gray-400" />
                                 ) : (
-                                  <ChevronRightIcon className="h-5 w-5 text-gray-400" />
+                                  <ChevronRight className="h-5 w-5 text-gray-400" />
                                 )}
                                 {getFiltracionBadge(filtracion)}
                                 <div className="text-sm text-gray-600">

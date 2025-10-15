@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import LockedSelect from '@/components/admin/LockedSelect'
-import { ArrowPathIcon, ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
+import { RotateCw, ChevronDown, ChevronRight } from 'lucide-react'
 
 interface Filter {
   id: string
@@ -176,7 +176,7 @@ export default function MappingsPage() {
       <div className="min-h-screen bg-gray-50 p-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-center py-12">
-            <ArrowPathIcon className="h-8 w-8 animate-spin text-blue-600" />
+            <RotateCw className="h-8 w-8 animate-spin text-blue-600" />
             <span className="ml-3 text-gray-600">Cargando mapeos...</span>
           </div>
         </div>
@@ -262,9 +262,9 @@ export default function MappingsPage() {
               >
                 <div className="flex items-center gap-4">
                   {expandedDispensadores.has(dispensador) ? (
-                    <ChevronDownIcon className="h-6 w-6 text-gray-500" />
+                    <ChevronDown className="h-6 w-6 text-gray-500" />
                   ) : (
-                    <ChevronRightIcon className="h-6 w-6 text-gray-500" />
+                    <ChevronRight className="h-6 w-6 text-gray-500" />
                   )}
                   <div className="text-left">
                     <h2 className="text-2xl font-bold text-gray-900">{dispensador}</h2>

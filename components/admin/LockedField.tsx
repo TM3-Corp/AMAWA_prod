@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { LockClosedIcon, PencilIcon, CheckIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { Lock, Pencil, Check, X } from 'lucide-react'
 
 interface LockedFieldProps {
   label: string
@@ -103,7 +103,7 @@ export default function LockedField({
               className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
               title="Editar campo"
             >
-              <LockClosedIcon className="h-5 w-5" />
+              <Lock className="h-5 w-5" />
             </button>
           </div>
         ) : (
@@ -135,7 +135,7 @@ export default function LockedField({
                 className="p-2 text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400 rounded-md transition-colors"
                 title="Guardar"
               >
-                <CheckIcon className="h-5 w-5" />
+                <Check className="h-5 w-5" />
               </button>
 
               <button
@@ -144,7 +144,7 @@ export default function LockedField({
                 className="p-2 text-gray-600 hover:bg-gray-100 disabled:bg-gray-200 rounded-md transition-colors"
                 title="Cancelar"
               >
-                <XMarkIcon className="h-5 w-5" />
+                <X className="h-5 w-5" />
               </button>
             </div>
 
@@ -161,7 +161,7 @@ export default function LockedField({
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
             <div className="flex items-start gap-4">
               <div className="flex-shrink-0">
-                <PencilIcon className="h-6 w-6 text-amber-600" />
+                <Pencil className="h-6 w-6 text-amber-600" />
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">

@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react'
 import LockedField from '@/components/admin/LockedField'
 import {
-  ExclamationTriangleIcon,
-  CheckCircleIcon,
-  ArrowPathIcon
-} from '@heroicons/react/24/outline'
+  AlertTriangle,
+  CheckCircle,
+  RotateCw
+} from 'lucide-react'
 
 interface Filter {
   id: string
@@ -76,21 +76,21 @@ export default function FilterInventoryPage() {
       case 'LOW':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-            <ExclamationTriangleIcon className="h-4 w-4" />
+            <AlertTriangle className="h-4 w-4" />
             Bajo
           </span>
         )
       case 'WARNING':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-            <ExclamationTriangleIcon className="h-4 w-4" />
+            <AlertTriangle className="h-4 w-4" />
             Advertencia
           </span>
         )
       case 'OK':
         return (
           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-            <CheckCircleIcon className="h-4 w-4" />
+            <CheckCircle className="h-4 w-4" />
             OK
           </span>
         )
@@ -120,7 +120,7 @@ export default function FilterInventoryPage() {
       <div className="min-h-screen bg-gray-50 p-8">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-center py-12">
-            <ArrowPathIcon className="h-8 w-8 animate-spin text-blue-600" />
+            <RotateCw className="h-8 w-8 animate-spin text-blue-600" />
             <span className="ml-3 text-gray-600">Cargando inventario...</span>
           </div>
         </div>
