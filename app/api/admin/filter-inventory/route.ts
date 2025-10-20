@@ -48,15 +48,45 @@ export async function GET() {
       })
     )
 
-    // Map usage counts to inventory
+    // Get package information for each filter
+    const uniqueFilterIds = Array.from(new Set(inventory.map(item => item.filterId).filter(Boolean))) as string[]
+
+    const packagesByFilter = await Promise.all(
+      uniqueFilterIds.map(async (filterId) => {
+        const packageItems = await prisma.filterPackageItem.findMany({
+          where: { filterId },
+          include: {
+            package: true
+          },
+          orderBy: {
+            package: { code: 'asc' }
+          }
+        })
+
+        return {
+          filterId,
+          packages: packageItems.map(item => ({
+            id: item.package.id,
+            code: item.package.code,
+            name: item.package.name,
+            description: item.package.description,
+            quantity: item.quantity
+          }))
+        }
+      })
+    )
+
+    // Map usage counts and packages to inventory
     const inventoryWithUsage = inventory.map(item => {
       const usageData = filterUsageCounts.find(u => u.filterId === item.filterId)
+      const packageData = packagesByFilter.find(p => p.filterId === item.filterId)
 
       return {
         ...item,
         inUseCount: usageData?.inUse || 0,
         status: item.quantity < item.minStock ? 'LOW' :
-               item.quantity < item.minStock * 2 ? 'WARNING' : 'OK'
+               item.quantity < item.minStock * 2 ? 'WARNING' : 'OK',
+        packages: packageData?.packages || []
       }
     })
 

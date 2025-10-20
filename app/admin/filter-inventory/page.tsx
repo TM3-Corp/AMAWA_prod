@@ -19,6 +19,14 @@ interface Filter {
   unitCost: number | null
 }
 
+interface FilterPackage {
+  id: string
+  code: string
+  name: string
+  description: string | null
+  quantity: number
+}
+
 interface FilterInventory {
   id: string
   filterId: string
@@ -29,6 +37,7 @@ interface FilterInventory {
   filter: Filter
   inUseCount: number
   status: 'LOW' | 'WARNING' | 'OK'
+  packages: FilterPackage[]
   createdAt: string
   updatedAt: string
 }
@@ -393,6 +402,44 @@ export default function FilterInventoryPage() {
                             </div>
                           </div>
                         </div>
+
+                        {/* Packages Section */}
+                        {item.packages && item.packages.length > 0 && (
+                          <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                            <div className="text-sm font-medium text-green-900 mb-3">
+                              Paquetes que incluyen este filtro ({item.packages.length})
+                            </div>
+                            <div className="space-y-2">
+                              {item.packages.map((pkg) => (
+                                <div key={pkg.id} className="flex items-start bg-white p-3 rounded border border-green-200">
+                                  <div className="flex-grow">
+                                    <div className="flex items-center gap-2">
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-green-600 text-white">
+                                        {pkg.code}
+                                      </span>
+                                      <span className="text-sm font-medium text-gray-900">
+                                        {pkg.name}
+                                      </span>
+                                    </div>
+                                    {pkg.description && (
+                                      <p className="text-xs text-gray-600 mt-1 ml-1">
+                                        {pkg.description}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <div className="ml-3 text-right">
+                                    <div className="text-sm font-semibold text-green-700">
+                                      {pkg.quantity}x
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      por paquete
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   )}
