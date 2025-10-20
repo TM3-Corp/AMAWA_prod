@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import LockedField from '@/components/admin/LockedField'
+import CreateEquipmentModal from '@/components/admin/CreateEquipmentModal'
 import {
   AlertTriangle,
   CheckCircle,
   RotateCw,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Plus
 } from 'lucide-react'
 
 interface EquipmentInventory {
@@ -32,6 +34,7 @@ export default function EquipmentInventoryPage() {
   const [expandedDispensadores, setExpandedDispensadores] = useState<Set<string>>(new Set())
   const [expandedFiltracion, setExpandedFiltracion] = useState<Set<string>>(new Set())
   const [editingItem, setEditingItem] = useState<string | null>(null)
+  const [showCreateModal, setShowCreateModal] = useState(false)
 
   const fetchInventory = async () => {
     try {
@@ -335,13 +338,22 @@ export default function EquipmentInventoryPage() {
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Inventario de Equipos
-          </h1>
-          <p className="text-gray-600">
-            Gestión de stock físico de equipos de purificación
-          </p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              Inventario de Equipos
+            </h1>
+            <p className="text-gray-600">
+              Gestión de stock físico de equipos de purificación
+            </p>
+          </div>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Nuevo Equipo
+          </button>
         </div>
 
         {/* Stats Bar */}
@@ -461,6 +473,13 @@ export default function EquipmentInventoryPage() {
             )
           })}
         </div>
+
+        {/* Create Equipment Modal */}
+        <CreateEquipmentModal
+          isOpen={showCreateModal}
+          onClose={() => setShowCreateModal(false)}
+          onSuccess={fetchInventory}
+        />
       </div>
     </div>
   )
