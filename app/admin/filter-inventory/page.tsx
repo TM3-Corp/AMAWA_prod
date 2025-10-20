@@ -2,10 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import LockedField from '@/components/admin/LockedField'
+import CreateFilterModal from '@/components/admin/CreateFilterModal'
 import {
   AlertTriangle,
   CheckCircle,
-  RotateCw
+  RotateCw,
+  Plus
 } from 'lucide-react'
 
 interface Filter {
@@ -37,6 +39,7 @@ export default function FilterInventoryPage() {
   const [error, setError] = useState<string | null>(null)
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL')
+  const [showCreateModal, setShowCreateModal] = useState(false)
 
   const fetchInventory = async () => {
     try {
@@ -154,13 +157,22 @@ export default function FilterInventoryPage() {
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Inventario de Filtros
-          </h1>
-          <p className="text-gray-600">
-            Gestión de stock de filtros para mantenciones
-          </p>
+        <div className="mb-8 flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              Inventario de Filtros
+            </h1>
+            <p className="text-gray-600">
+              Gestión de stock de filtros para mantenciones
+            </p>
+          </div>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+          >
+            <Plus className="w-5 h-5 mr-2" />
+            Nuevo Filtro
+          </button>
         </div>
 
         {/* Filters */}
@@ -390,6 +402,13 @@ export default function FilterInventoryPage() {
           </table>
         </div>
       </div>
+
+      {/* Create Filter Modal */}
+      <CreateFilterModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSuccess={fetchInventory}
+      />
     </div>
   )
 }
