@@ -30,6 +30,7 @@ export default function Navbar() {
   const [loading, setLoading] = useState(true)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [adminMenuOpen, setAdminMenuOpen] = useState(false)
 
   useEffect(() => {
     fetchUser()
@@ -63,7 +64,15 @@ export default function Navbar() {
     { name: 'Clientes', href: '/clients', icon: Users },
     { name: 'Mantenciones', href: '/maintenances', icon: Wrench },
     { name: 'Órdenes de Trabajo', href: '/work-orders', icon: FileText },
+    { name: 'Calendario', href: '/calendar', icon: Calendar },
     { name: 'Inventario', href: '/inventory', icon: Package },
+  ]
+
+  const adminNavigation = [
+    { name: 'Inventario de Equipos', href: '/admin/equipment-inventory', icon: Package },
+    { name: 'Inventario de Filtros', href: '/admin/filter-inventory', icon: Package },
+    { name: 'Mapeos Equipo-Filtro', href: '/admin/mappings', icon: Settings },
+    { name: 'Gestión de Usuarios', href: '/users', icon: Shield },
   ]
 
   const roleLabels: Record<string, string> = {
@@ -88,11 +97,8 @@ export default function Navbar() {
               <img
                 src="/images/amawa_logo.png"
                 alt="AMAWA Logo"
-                className="h-8 w-auto"
+                className="h-12 w-auto"
               />
-              <span className="ml-2 text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                AMAWA
-              </span>
             </Link>
 
             {/* Desktop navigation */}
@@ -120,15 +126,47 @@ export default function Navbar() {
 
           {/* Right side */}
           <div className="flex items-center space-x-4">
-            {/* Admin link */}
+            {/* Admin dropdown menu */}
             {user?.role === 'admin' && (
-              <Link
-                href="/users"
-                className="hidden md:inline-flex items-center px-3 py-2 text-sm font-medium text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-              >
-                <Shield className="w-4 h-4 mr-2" />
-                Usuarios
-              </Link>
+              <div className="relative hidden md:block">
+                <button
+                  onClick={() => setAdminMenuOpen(!adminMenuOpen)}
+                  className="inline-flex items-center px-3 py-2 text-sm font-medium text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                >
+                  <Shield className="w-4 h-4 mr-2" />
+                  Admin
+                  <ChevronDown className="w-4 h-4 ml-1" />
+                </button>
+
+                {/* Admin dropdown */}
+                {adminMenuOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setAdminMenuOpen(false)}
+                    />
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg py-1 z-20 border border-gray-200">
+                      {adminNavigation.map((item) => {
+                        const Icon = item.icon
+                        const isActive = pathname === item.href
+                        return (
+                          <Link
+                            key={item.name}
+                            href={item.href}
+                            onClick={() => setAdminMenuOpen(false)}
+                            className={`flex items-center px-4 py-2 text-sm hover:bg-gray-50 ${
+                              isActive ? 'text-purple-600 bg-purple-50' : 'text-gray-700'
+                            }`}
+                          >
+                            <Icon className="w-4 h-4 mr-3" />
+                            {item.name}
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
             )}
 
             {/* User menu */}
@@ -222,14 +260,30 @@ export default function Navbar() {
               )
             })}
             {user?.role === 'admin' && (
-              <Link
-                href="/users"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center px-3 py-2 rounded-lg text-base font-medium text-purple-600 hover:bg-purple-50"
-              >
-                <Shield className="w-5 h-5 mr-3" />
-                Usuarios
-              </Link>
+              <>
+                <div className="px-3 py-2 text-xs font-semibold text-purple-600 uppercase tracking-wider">
+                  Administración
+                </div>
+                {adminNavigation.map((item) => {
+                  const Icon = item.icon
+                  const isActive = pathname === item.href
+                  return (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`flex items-center px-3 py-2 rounded-lg text-base font-medium ${
+                        isActive
+                          ? 'text-purple-600 bg-purple-50'
+                          : 'text-gray-700 hover:text-purple-600 hover:bg-purple-50'
+                      }`}
+                    >
+                      <Icon className="w-5 h-5 mr-3" />
+                      {item.name}
+                    </Link>
+                  )
+                })}
+              </>
             )}
           </div>
         </div>
