@@ -125,16 +125,16 @@ export default function Navbar() {
           </div>
 
           {/* Right side */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 md:space-x-4">
             {/* Admin dropdown menu */}
             {user?.role === 'admin' && (
-              <div className="relative hidden md:block">
+              <div className="relative">
                 <button
                   onClick={() => setAdminMenuOpen(!adminMenuOpen)}
-                  className="inline-flex items-center px-3 py-2 text-sm font-medium text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                  className="inline-flex items-center px-3 py-2 text-sm font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors border border-purple-200"
                 >
-                  <Shield className="w-4 h-4 mr-2" />
-                  Admin
+                  <Shield className="w-4 h-4 mr-1 md:mr-2" />
+                  <span className="hidden sm:inline">Admin</span>
                   <ChevronDown className="w-4 h-4 ml-1" />
                 </button>
 
