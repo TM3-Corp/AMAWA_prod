@@ -76,10 +76,10 @@ export default function Navbar() {
   ]
 
   const roleLabels: Record<string, string> = {
-    admin: 'Administrador',
-    technician: 'Técnico',
-    manager: 'Gerente',
-    client: 'Cliente',
+    ADMIN: 'Administrador',
+    TECHNICIAN: 'Técnico',
+    MANAGER: 'Gerente',
+    CLIENT: 'Cliente',
   }
 
   if (!user && !loading) {
@@ -127,7 +127,7 @@ export default function Navbar() {
           {/* Right side */}
           <div className="flex items-center space-x-2 md:space-x-4">
             {/* Admin dropdown menu */}
-            {user?.role === 'admin' && (
+            {user?.role === 'ADMIN' && (
               <div className="relative">
                 <button
                   onClick={() => setAdminMenuOpen(!adminMenuOpen)}
@@ -259,7 +259,7 @@ export default function Navbar() {
                 </Link>
               )
             })}
-            {user?.role === 'admin' && (
+            {user?.role === 'ADMIN' && (
               <>
                 <div className="px-3 py-2 text-xs font-semibold text-purple-600 uppercase tracking-wider">
                   Administración
