@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import Navbar from '@/components/Navbar'
 import {
   Package,
@@ -474,6 +475,12 @@ export default function UnifiedInventoryPage() {
                                             <div className="text-xs text-gray-500">Mín: {location.minStock}</div>
                                           </div>
                                           {getStatusBadge(location.status)}
+                                          <Link
+                                            href="/admin/equipment-inventory"
+                                            className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline"
+                                          >
+                                            Editar
+                                          </Link>
                                         </div>
                                       </div>
                                     ))}
@@ -574,6 +581,12 @@ export default function UnifiedInventoryPage() {
                                             <div className="text-xs text-gray-500">Mín: {location.minStock}</div>
                                           </div>
                                           {getStatusBadge(location.status)}
+                                          <Link
+                                            href="/admin/filter-inventory"
+                                            className="text-xs text-blue-600 hover:text-blue-800 font-medium hover:underline"
+                                          >
+                                            Editar
+                                          </Link>
                                         </div>
                                       </div>
                                     ))}
