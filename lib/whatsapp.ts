@@ -168,6 +168,40 @@ export async function sendMaintenanceConfirmation(params: {
 }
 
 /**
+ * Send technician visit appointment
+ * Uses template: prueba_envio_filtros
+ */
+export async function sendTechnicianVisit(params: {
+  to: string
+  clientName: string
+  address: string
+  date: string
+  startTime: string
+  endTime: string
+}) {
+  return sendWhatsAppMessage({
+    to: params.to,
+    type: 'template',
+    template: {
+      name: 'prueba_envio_filtros',
+      language: 'es',
+      components: [
+        {
+          type: 'body',
+          parameters: [
+            { type: 'text', text: params.clientName },
+            { type: 'text', text: params.address },
+            { type: 'text', text: params.date },
+            { type: 'text', text: params.startTime },
+            { type: 'text', text: params.endTime },
+          ],
+        },
+      ],
+    },
+  })
+}
+
+/**
  * Send a simple text message (for testing or manual messages)
  */
 export async function sendTextMessage(to: string, text: string) {
