@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import prisma from '@/lib/prisma'
+import { processMessageWithClaude } from '@/lib/claude'
+import { sendTextMessage } from '@/lib/whatsapp'
+
+// Enable AI processing for incoming messages (set to false to use legacy pattern matching)
+const AI_ENABLED = process.env.WHATSAPP_AI_ENABLED === 'true'
 
 // Webhook verification (GET) - Meta will call this to verify our webhook
 export async function GET(request: NextRequest) {
@@ -173,6 +178,42 @@ async function handleTextMessage(
       return
     }
 
+    // AI-powered processing (when enabled)
+    if (AI_ENABLED) {
+      console.log(`🤖 Processing message with Claude AI: "${text}"`)
+
+      try {
+        const aiResponse = await processMessageWithClaude(text, from)
+        console.log(`🤖 Claude AI response: ${aiResponse}`)
+
+        // Send AI response back to client via WhatsApp
+        console.log(`📤 Sending AI response to ${from}...`)
+        const sendResult = await sendTextMessage(from, aiResponse)
+
+        if (sendResult.success) {
+          console.log(`✅ AI response sent successfully. Message ID: ${sendResult.messageId}`)
+        } else {
+          console.error(`❌ Failed to send AI response: ${sendResult.error}`)
+        }
+
+        // Update message with AI processing info
+        await prisma.whatsAppMessage.update({
+          where: { id: storedMessageId },
+          data: {
+            processed: true,
+            processedAt: new Date(),
+            processingNotes: `AI processed. Response sent: ${sendResult.success}. Preview: ${aiResponse.substring(0, 500)}`,
+          }
+        })
+
+        return
+      } catch (error) {
+        console.error('Error processing with Claude AI, falling back to pattern matching:', error)
+        // Fall through to legacy pattern matching
+      }
+    }
+
+    // Legacy pattern matching (backward compatibility)
     const lowerText = text.toLowerCase().trim()
     let processingNotes: string | null = null
     let maintenanceId: string | null = null
