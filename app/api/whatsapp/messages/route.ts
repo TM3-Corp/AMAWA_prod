@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50')
     const unprocessedOnly = searchParams.get('unprocessed') === 'true'
     const clientId = searchParams.get('clientId')
+    const phone = searchParams.get('phone')
 
     // Build where clause
     const where: any = {}
@@ -18,6 +19,10 @@ export async function GET(request: NextRequest) {
 
     if (clientId) {
       where.clientId = clientId
+    }
+
+    if (phone) {
+      where.fromPhone = { contains: phone }
     }
 
     // Fetch messages
