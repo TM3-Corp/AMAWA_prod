@@ -8,7 +8,7 @@ const AI_ENABLED = process.env.WHATSAPP_AI_ENABLED === 'true'
 
 // Message debouncing configuration
 const DEBOUNCE_DELAY = 8000 // 8 seconds - wait for more messages before processing (slow typers!)
-const DEBOUNCE_WINDOW = 15000 // 15 seconds - look back for recent messages to batch
+const DEBOUNCE_WINDOW = 30000 // 30 seconds - look back for recent messages to batch
 
 // Helper to wait (Promise-based delay that works in serverless)
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
@@ -320,6 +320,7 @@ async function handleTextMessage(
 
       // Check if there are any NEWER unprocessed messages from this client
       // If yes, skip (let the newer message handle batching)
+      // IMPORTANT: Check again right before processing to avoid race conditions
       const newerUnprocessedCount = await prisma.whatsAppMessage.count({
         where: {
           fromPhone: from,
@@ -331,6 +332,17 @@ async function handleTextMessage(
 
       if (newerUnprocessedCount > 0) {
         console.log(`⏭️  Found ${newerUnprocessedCount} newer unprocessed messages. Skipping (they will batch this message).`)
+        return
+      }
+
+      // Double-check right before processing (avoid race condition)
+      const stillUnprocessed = await prisma.whatsAppMessage.findUnique({
+        where: { id: storedMessageId },
+        select: { processed: true }
+      })
+
+      if (stillUnprocessed?.processed) {
+        console.log(`✅ Already processed by another instance, skipping`)
         return
       }
 
