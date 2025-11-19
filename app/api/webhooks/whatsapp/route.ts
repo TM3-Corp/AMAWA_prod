@@ -275,7 +275,7 @@ async function handleTextMessage(
       if (!client) {
         console.log(`⚠️  Unregistered client ${from} - sending friendly response`)
 
-        const unregisteredMessage = `Hola! 👋\n\nVeo que tu número aún no está registrado en nuestro sistema AMAWA.\n\nPara poder ayudarte con mantenciones y servicios de purificación de agua, necesitas estar registrado como cliente.\n\n📞 Contacta con nosotros:\n• WhatsApp: +56 9 6608 3433\n• Email: contacto@amawa.cl\n\n¡Estaremos felices de atenderte!`
+        const unregisteredMessage = `Hola! 👋\n\nVeo que tu número aún no está registrado en nuestro sistema AMAWA.\n\nPara poder ayudarte con mantenciones y servicios de purificación de agua, necesitas estar registrado como cliente.\n\n📧 Contáctanos: hola@amawa.cl\n\n¡Estaremos felices de atenderte!`
 
         const sendResult = await sendTextMessage(from, unregisteredMessage)
 
