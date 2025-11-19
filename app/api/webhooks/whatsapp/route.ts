@@ -296,7 +296,7 @@ async function handleTextMessage(
         return
       }
 
-      // Database-based debouncing - every message starts its own timer
+      // Database-based debouncing with sliding window
       console.log(`🤖 Message from ${client.name}: "${text}"`)
       console.log(`⏱️  Starting ${DEBOUNCE_DELAY}ms debounce timer for this message`)
 
@@ -313,7 +313,24 @@ async function handleTextMessage(
         return
       }
 
-      console.log(`🚀 Timer expired, processing all unprocessed messages for ${from}`)
+      // Check if there are any NEWER unprocessed messages from this client
+      // If yes, skip (let the newer message handle batching)
+      const newerUnprocessedCount = await prisma.whatsAppMessage.count({
+        where: {
+          fromPhone: from,
+          processed: false,
+          messageType: 'text',
+          timestamp: { gt: currentMessage.timestamp } // Newer than current
+        }
+      })
+
+      if (newerUnprocessedCount > 0) {
+        console.log(`⏭️  Found ${newerUnprocessedCount} newer unprocessed messages. Skipping (they will batch this message).`)
+        return
+      }
+
+      // This is the latest message - process entire batch
+      console.log(`🚀 Latest message in batch, processing all unprocessed messages for ${from}`)
       await processBatchedMessages(from, storedMessageId)
       return
     }
