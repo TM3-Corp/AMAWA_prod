@@ -286,7 +286,8 @@ export async function processMessageWithClaude(
     ]
 
     // Use Haiku 4.5 (smarter, slightly more expensive) or Sonnet for best reasoning
-    const model = process.env.CLAUDE_MODEL || 'claude-haiku-4-5'
+    // Using specific version ID instead of alias for compatibility
+    const model = process.env.CLAUDE_MODEL || 'claude-haiku-4-5-20251001'
 
     let response = await anthropic.messages.create({
       model,
@@ -349,7 +350,7 @@ export async function processMessageWithClaude(
 export async function testClaudeConnection() {
   try {
     const anthropic = getAnthropicClient()
-    const model = process.env.CLAUDE_MODEL || 'claude-haiku-4-5'
+    const model = process.env.CLAUDE_MODEL || 'claude-haiku-4-5-20251001'
 
     const response = await anthropic.messages.create({
       model,
