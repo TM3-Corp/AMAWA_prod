@@ -186,21 +186,25 @@ async function handleTextMessage(
       orderBy: { scheduledDate: 'asc' }
     })
 
-    // Address confirmation responses
+    // Maintenance completion confirmation - "Si" response
     if (lowerText === 'si' || lowerText === 'sí' || lowerText === 'yes' || lowerText === 'confirmo') {
-      console.log(`✅ ${from} confirmed (likely address or maintenance)`)
+      console.log(`✅ ${from} confirmed maintenance completion with "Si"`)
 
       if (latestMaintenance) {
-        // Update maintenance status to SCHEDULED
+        // Mark maintenance as COMPLETED
         await prisma.maintenance.update({
           where: { id: latestMaintenance.id },
-          data: { status: 'SCHEDULED' }
+          data: {
+            status: 'COMPLETED',
+            actualDate: new Date(),
+            completedDate: new Date()
+          }
         })
         maintenanceId = latestMaintenance.id
-        processingNotes = `Confirmed maintenance ${latestMaintenance.id}. Status updated to SCHEDULED.`
-        console.log(`✅ Maintenance ${latestMaintenance.id} confirmed for client ${client.name}`)
+        processingNotes = `Client confirmed with "Si". Maintenance ${latestMaintenance.id} marked as COMPLETED.`
+        console.log(`✅ Maintenance ${latestMaintenance.id} marked as COMPLETED for client ${client.name}`)
       } else {
-        processingNotes = 'Client confirmed but no pending maintenance found.'
+        processingNotes = 'Client confirmed with "Si" but no pending/scheduled maintenance found.'
       }
     }
 
