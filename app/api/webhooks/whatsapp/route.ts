@@ -6,17 +6,12 @@ import { sendTextMessage } from '@/lib/whatsapp'
 // Enable AI processing for incoming messages (set to false to use legacy pattern matching)
 const AI_ENABLED = process.env.WHATSAPP_AI_ENABLED === 'true'
 
-// Message debouncing to prevent multiple responses for rapid consecutive messages
-// NOTE: This uses in-memory storage, which works well in serverless but isn't 100% guaranteed
-// across different function instances. For production at scale, consider Redis-based debouncing.
-type MessageBatch = {
-  messages: Array<{ text: string, messageId: string, storedMessageId: string, from: string }>,
-  client: any,
-  timeoutId: NodeJS.Timeout
-}
-
-const pendingMessages = new Map<string, MessageBatch>()
+// Message debouncing configuration
 const DEBOUNCE_DELAY = 3000 // 3 seconds - wait for more messages before processing
+const DEBOUNCE_WINDOW = 5000 // 5 seconds - look back for recent messages to batch
+
+// Helper to wait (Promise-based delay that works in serverless)
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 /**
  * Normalize phone number to match database format
@@ -126,19 +121,34 @@ async function processWebhookAsync(body: any) {
   }
 }
 
-// Process batched messages after debounce timer expires
-async function processBatchedMessages(phone: string) {
-  const batch = pendingMessages.get(phone)
-  if (!batch) return
-
-  console.log(`🚀 Processing batch of ${batch.messages.length} messages from ${phone}`)
-
-  // Remove from pending map
-  pendingMessages.delete(phone)
-
+// Process batched messages using database-based debouncing (works in serverless)
+async function processBatchedMessages(phone: string, currentMessageId: string) {
   try {
+    // Wait for debounce delay to allow more messages to arrive
+    console.log(`⏱️  Waiting ${DEBOUNCE_DELAY}ms for more messages...`)
+    await delay(DEBOUNCE_DELAY)
+
+    // Fetch all unprocessed messages from this phone in the recent window
+    const recentTime = new Date(Date.now() - DEBOUNCE_WINDOW)
+    const unprocessedMessages = await prisma.whatsAppMessage.findMany({
+      where: {
+        fromPhone: phone,
+        processed: false,
+        messageType: 'text',
+        timestamp: { gte: recentTime }
+      },
+      orderBy: { timestamp: 'asc' }
+    })
+
+    if (unprocessedMessages.length === 0) {
+      console.log(`⚠️  No unprocessed messages found for ${phone}`)
+      return
+    }
+
+    console.log(`🚀 Processing batch of ${unprocessedMessages.length} messages from ${phone}`)
+
     // Combine all messages into one
-    const combinedText = batch.messages.map(m => m.text).join('\n')
+    const combinedText = unprocessedMessages.map(m => m.textBody).filter(Boolean).join('\n')
     console.log(`📝 Combined message: "${combinedText}"`)
 
     // Process with Claude AI
@@ -156,20 +166,19 @@ async function processBatchedMessages(phone: string) {
     }
 
     // Update all messages in the batch with AI processing info
-    const processingNotes = `AI processed (batched ${batch.messages.length} messages). Response sent: ${sendResult.success}. Preview: ${aiResponse.substring(0, 500)}`
+    const processingNotes = `AI processed (batched ${unprocessedMessages.length} messages). Response sent: ${sendResult.success}. Preview: ${aiResponse.substring(0, 500)}`
 
-    for (const msg of batch.messages) {
-      await prisma.whatsAppMessage.update({
-        where: { id: msg.storedMessageId },
-        data: {
-          processed: true,
-          processedAt: new Date(),
-          processingNotes,
-        }
-      })
-    }
+    const messageIds = unprocessedMessages.map(m => m.id)
+    await prisma.whatsAppMessage.updateMany({
+      where: { id: { in: messageIds } },
+      data: {
+        processed: true,
+        processedAt: new Date(),
+        processingNotes,
+      }
+    })
 
-    console.log(`✅ Updated ${batch.messages.length} messages in database`)
+    console.log(`✅ Updated ${unprocessedMessages.length} messages in database`)
   } catch (error) {
     console.error('Error processing batched messages:', error)
   }
@@ -291,37 +300,30 @@ async function handleTextMessage(
         return
       }
 
-      // Debounce messages - batch rapid consecutive messages from same client
+      // Database-based debouncing - check if there are recent unprocessed messages
       console.log(`🤖 Message from ${client.name}: "${text}"`)
 
-      // Check if there's already a pending batch for this phone
-      const existingBatch = pendingMessages.get(from)
+      // Check if there are any other recent unprocessed messages from this client
+      const recentTime = new Date(Date.now() - DEBOUNCE_WINDOW)
+      const recentUnprocessedCount = await prisma.whatsAppMessage.count({
+        where: {
+          fromPhone: from,
+          processed: false,
+          messageType: 'text',
+          timestamp: { gte: recentTime },
+          id: { not: storedMessageId } // Exclude current message
+        }
+      })
 
-      if (existingBatch) {
-        // Add to existing batch and reset timer
-        console.log(`⏱️  Adding to existing batch (${existingBatch.messages.length + 1} messages total)`)
-        clearTimeout(existingBatch.timeoutId)
-        existingBatch.messages.push({ text, messageId, storedMessageId, from })
-
-        // Reset timer
-        existingBatch.timeoutId = setTimeout(() => {
-          processBatchedMessages(from)
-        }, DEBOUNCE_DELAY)
-      } else {
-        // Create new batch
-        console.log(`⏱️  Starting new message batch (waiting ${DEBOUNCE_DELAY}ms for more messages)`)
-
-        const timeoutId = setTimeout(() => {
-          processBatchedMessages(from)
-        }, DEBOUNCE_DELAY)
-
-        pendingMessages.set(from, {
-          messages: [{ text, messageId, storedMessageId, from }],
-          client,
-          timeoutId
-        })
+      if (recentUnprocessedCount > 0) {
+        // There are other unprocessed messages - they're being batched
+        console.log(`📦 Found ${recentUnprocessedCount} other unprocessed messages. Skipping processing (will be batched).`)
+        return
       }
 
+      // This is the first/only message - process it after debounce delay
+      console.log(`🎯 First message in potential batch. Starting debounce timer.`)
+      await processBatchedMessages(from, storedMessageId)
       return
     }
 
