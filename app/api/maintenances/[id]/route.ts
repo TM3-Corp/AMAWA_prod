@@ -58,10 +58,10 @@ export async function GET(
 
     if (contract?.planCode) {
       const cycleMap: Record<string, number> = {
-        '6_months': 6,
-        '12_months': 12,
-        '18_months': 18,
-        '24_months': 24
+        'SIX_MONTHS': 6,
+        'TWELVE_MONTHS': 12,
+        'EIGHTEEN_MONTHS': 18,
+        'TWENTY_FOUR_MONTHS': 24
       }
       const cycle = cycleMap[maintenance.type]
 
