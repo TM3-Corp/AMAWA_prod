@@ -191,13 +191,14 @@ async function handleTextMessage(
       console.log(`✅ ${from} confirmed maintenance completion with "Si"`)
 
       if (latestMaintenance) {
-        // Mark maintenance as COMPLETED
+        // Mark maintenance as COMPLETED with WhatsApp confirmation note
         await prisma.maintenance.update({
           where: { id: latestMaintenance.id },
           data: {
             status: 'COMPLETED',
             actualDate: new Date(),
-            completedDate: new Date()
+            completedDate: new Date(),
+            notes: 'Confirmado vía Whatsapp'
           }
         })
         maintenanceId = latestMaintenance.id
