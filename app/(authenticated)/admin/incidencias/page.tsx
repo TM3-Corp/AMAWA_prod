@@ -24,6 +24,8 @@ import IncidentFormModal from '@/components/IncidentFormModal'
 
 interface Incident {
   id: string
+  clientId: string
+  maintenanceId: string | null
   category: string | null
   status: string
   priority: string
