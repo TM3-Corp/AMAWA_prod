@@ -131,6 +131,33 @@ export async function POST(request: Request) {
       })
     }
 
+    // Automatically generate maintenance schedule based on installation date
+    if (data.installationDate) {
+      const installationDate = new Date(data.installationDate)
+      const maintenanceCycles = [
+        { type: 'SIX_MONTHS', months: 6 },
+        { type: 'TWELVE_MONTHS', months: 12 },
+        { type: 'EIGHTEEN_MONTHS', months: 18 },
+        { type: 'TWENTY_FOUR_MONTHS', months: 24 },
+      ]
+
+      // Create all 4 maintenances
+      for (const cycle of maintenanceCycles) {
+        const scheduledDate = new Date(installationDate)
+        scheduledDate.setMonth(scheduledDate.getMonth() + cycle.months)
+
+        await prisma.maintenance.create({
+          data: {
+            clientId: client.id,
+            type: cycle.type as any,
+            scheduledDate,
+            status: 'PENDING',
+            deliveryType: data.deliveryType || 'Delivery',
+          },
+        })
+      }
+    }
+
     return NextResponse.json(client, { status: 201 })
   } catch (error) {
     console.error('Error creating client:', error)
