@@ -285,8 +285,8 @@ export async function processMessageWithClaude(
       },
     ]
 
-    // Use Haiku for 10x cost savings (or Sonnet for better reasoning)
-    const model = process.env.CLAUDE_MODEL || 'claude-3-5-haiku-20241022'
+    // Use Haiku 4.5 (smarter, slightly more expensive) or Sonnet for best reasoning
+    const model = process.env.CLAUDE_MODEL || 'claude-haiku-4-5'
 
     let response = await anthropic.messages.create({
       model,
@@ -349,7 +349,7 @@ export async function processMessageWithClaude(
 export async function testClaudeConnection() {
   try {
     const anthropic = getAnthropicClient()
-    const model = process.env.CLAUDE_MODEL || 'claude-3-5-haiku-20241022'
+    const model = process.env.CLAUDE_MODEL || 'claude-haiku-4-5'
 
     const response = await anthropic.messages.create({
       model,
