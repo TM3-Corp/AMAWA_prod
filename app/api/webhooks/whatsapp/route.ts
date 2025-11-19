@@ -6,6 +6,30 @@ import { sendTextMessage } from '@/lib/whatsapp'
 // Enable AI processing for incoming messages (set to false to use legacy pattern matching)
 const AI_ENABLED = process.env.WHATSAPP_AI_ENABLED === 'true'
 
+/**
+ * Normalize phone number to match database format
+ * WhatsApp sends: 56953706861
+ * Database has: 56 9 5370 6861
+ */
+function normalizePhoneForDB(phone: string): string[] {
+  // Remove all non-digits
+  const digits = phone.replace(/\D/g, '')
+
+  const formats = [phone] // Original format
+
+  // Chilean format: 56 9 XXXX XXXX (11 digits starting with 569)
+  if (digits.length === 11 && digits.startsWith('569')) {
+    formats.push(`${digits.slice(0, 2)} ${digits.slice(2, 3)} ${digits.slice(3, 7)} ${digits.slice(7)}`)
+  }
+
+  // Also try without any spaces
+  if (digits !== phone) {
+    formats.push(digits)
+  }
+
+  return Array.from(new Set(formats)) // Remove duplicates
+}
+
 // Webhook verification (GET) - Meta will call this to verify our webhook
 export async function GET(request: NextRequest) {
   try {
@@ -99,10 +123,21 @@ async function handleIncomingMessage(message: any, metadata: any) {
 
     console.log(`📨 Message from ${from}:`, message)
 
-    // Find client by phone number
+    // Find client by phone number (try multiple formats)
+    const phoneFormats = normalizePhoneForDB(from)
+    console.log(`🔍 Searching for client with phone formats:`, phoneFormats)
+
     const client = await prisma.client.findFirst({
-      where: { phone: from }
+      where: {
+        phone: { in: phoneFormats }
+      }
     })
+
+    if (client) {
+      console.log(`✅ Client found: ${client.name} (${client.phone})`)
+    } else {
+      console.log(`⚠️  No client found for phone: ${from}`)
+    }
 
     // Extract message content based on type
     let textBody: string | null = null
@@ -173,14 +208,10 @@ async function handleTextMessage(
   client: any
 ) {
   try {
-    if (!client) {
-      console.log(`⚠️  Client not found for phone: ${from}`)
-      return
-    }
-
-    // AI-powered processing (when enabled)
+    // AI-powered processing (when enabled) - process ALL messages, not just registered clients
     if (AI_ENABLED) {
       console.log(`🤖 Processing message with Claude AI: "${text}"`)
+      console.log(`   Client registered: ${client ? 'Yes' : 'No (will get limited responses)'}`)
 
       try {
         const aiResponse = await processMessageWithClaude(text, from)
