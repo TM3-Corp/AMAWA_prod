@@ -6,6 +6,18 @@ import { sendTextMessage } from '@/lib/whatsapp'
 // Enable AI processing for incoming messages (set to false to use legacy pattern matching)
 const AI_ENABLED = process.env.WHATSAPP_AI_ENABLED === 'true'
 
+// Message debouncing to prevent multiple responses for rapid consecutive messages
+// NOTE: This uses in-memory storage, which works well in serverless but isn't 100% guaranteed
+// across different function instances. For production at scale, consider Redis-based debouncing.
+type MessageBatch = {
+  messages: Array<{ text: string, messageId: string, storedMessageId: string, from: string }>,
+  client: any,
+  timeoutId: NodeJS.Timeout
+}
+
+const pendingMessages = new Map<string, MessageBatch>()
+const DEBOUNCE_DELAY = 3000 // 3 seconds - wait for more messages before processing
+
 /**
  * Normalize phone number to match database format
  * WhatsApp sends: 56953706861
@@ -114,6 +126,55 @@ async function processWebhookAsync(body: any) {
   }
 }
 
+// Process batched messages after debounce timer expires
+async function processBatchedMessages(phone: string) {
+  const batch = pendingMessages.get(phone)
+  if (!batch) return
+
+  console.log(`🚀 Processing batch of ${batch.messages.length} messages from ${phone}`)
+
+  // Remove from pending map
+  pendingMessages.delete(phone)
+
+  try {
+    // Combine all messages into one
+    const combinedText = batch.messages.map(m => m.text).join('\n')
+    console.log(`📝 Combined message: "${combinedText}"`)
+
+    // Process with Claude AI
+    const aiResponse = await processMessageWithClaude(combinedText, phone)
+    console.log(`🤖 Claude AI response: ${aiResponse}`)
+
+    // Send AI response back to client via WhatsApp
+    console.log(`📤 Sending AI response to ${phone}...`)
+    const sendResult = await sendTextMessage(phone, aiResponse)
+
+    if (sendResult.success) {
+      console.log(`✅ AI response sent successfully. Message ID: ${sendResult.messageId}`)
+    } else {
+      console.error(`❌ Failed to send AI response: ${sendResult.error}`)
+    }
+
+    // Update all messages in the batch with AI processing info
+    const processingNotes = `AI processed (batched ${batch.messages.length} messages). Response sent: ${sendResult.success}. Preview: ${aiResponse.substring(0, 500)}`
+
+    for (const msg of batch.messages) {
+      await prisma.whatsAppMessage.update({
+        where: { id: msg.storedMessageId },
+        data: {
+          processed: true,
+          processedAt: new Date(),
+          processingNotes,
+        }
+      })
+    }
+
+    console.log(`✅ Updated ${batch.messages.length} messages in database`)
+  } catch (error) {
+    console.error('Error processing batched messages:', error)
+  }
+}
+
 // Handle incoming messages from clients
 async function handleIncomingMessage(message: any, metadata: any) {
   try {
@@ -208,40 +269,60 @@ async function handleTextMessage(
   client: any
 ) {
   try {
-    // AI-powered processing (when enabled) - process ALL messages, not just registered clients
+    // AI-powered processing (when enabled)
     if (AI_ENABLED) {
-      console.log(`🤖 Processing message with Claude AI: "${text}"`)
-      console.log(`   Client registered: ${client ? 'Yes' : 'No (will get limited responses)'}`)
+      // Handle unregistered clients with a friendly message
+      if (!client) {
+        console.log(`⚠️  Unregistered client ${from} - sending friendly response`)
 
-      try {
-        const aiResponse = await processMessageWithClaude(text, from)
-        console.log(`🤖 Claude AI response: ${aiResponse}`)
+        const unregisteredMessage = `Hola! 👋\n\nVeo que tu número aún no está registrado en nuestro sistema AMAWA.\n\nPara poder ayudarte con mantenciones y servicios de purificación de agua, necesitas estar registrado como cliente.\n\n📞 Contacta con nosotros:\n• WhatsApp: +56 9 6608 3433\n• Email: contacto@amawa.cl\n\n¡Estaremos felices de atenderte!`
 
-        // Send AI response back to client via WhatsApp
-        console.log(`📤 Sending AI response to ${from}...`)
-        const sendResult = await sendTextMessage(from, aiResponse)
+        const sendResult = await sendTextMessage(from, unregisteredMessage)
 
-        if (sendResult.success) {
-          console.log(`✅ AI response sent successfully. Message ID: ${sendResult.messageId}`)
-        } else {
-          console.error(`❌ Failed to send AI response: ${sendResult.error}`)
-        }
-
-        // Update message with AI processing info
         await prisma.whatsAppMessage.update({
           where: { id: storedMessageId },
           data: {
             processed: true,
             processedAt: new Date(),
-            processingNotes: `AI processed. Response sent: ${sendResult.success}. Preview: ${aiResponse.substring(0, 500)}`,
+            processingNotes: `Unregistered client. Sent registration info. Response sent: ${sendResult.success}`,
           }
         })
 
         return
-      } catch (error) {
-        console.error('Error processing with Claude AI, falling back to pattern matching:', error)
-        // Fall through to legacy pattern matching
       }
+
+      // Debounce messages - batch rapid consecutive messages from same client
+      console.log(`🤖 Message from ${client.name}: "${text}"`)
+
+      // Check if there's already a pending batch for this phone
+      const existingBatch = pendingMessages.get(from)
+
+      if (existingBatch) {
+        // Add to existing batch and reset timer
+        console.log(`⏱️  Adding to existing batch (${existingBatch.messages.length + 1} messages total)`)
+        clearTimeout(existingBatch.timeoutId)
+        existingBatch.messages.push({ text, messageId, storedMessageId, from })
+
+        // Reset timer
+        existingBatch.timeoutId = setTimeout(() => {
+          processBatchedMessages(from)
+        }, DEBOUNCE_DELAY)
+      } else {
+        // Create new batch
+        console.log(`⏱️  Starting new message batch (waiting ${DEBOUNCE_DELAY}ms for more messages)`)
+
+        const timeoutId = setTimeout(() => {
+          processBatchedMessages(from)
+        }, DEBOUNCE_DELAY)
+
+        pendingMessages.set(from, {
+          messages: [{ text, messageId, storedMessageId, from }],
+          client,
+          timeoutId
+        })
+      }
+
+      return
     }
 
     // Legacy pattern matching (backward compatibility)
