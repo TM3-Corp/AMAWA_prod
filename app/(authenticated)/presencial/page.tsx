@@ -331,7 +331,7 @@ export default function PresencialAssignmentPage() {
                           <input
                             type="checkbox"
                             checked={allSelected}
-                            ref={(el) => el && (el.indeterminate = someSelected && !allSelected)}
+                            ref={(el) => { if (el) el.indeterminate = someSelected && !allSelected }}
                             onChange={() => toggleComunaSelection(group.comuna)}
                             className="w-5 h-5 rounded border-white text-purple-600 focus:ring-2 focus:ring-white"
                           />

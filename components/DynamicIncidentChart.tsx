@@ -17,6 +17,7 @@ interface DynamicStatsResponse {
   limit: number
   total: number
   data: ChartData[]
+  error?: string
 }
 
 const CHART_COLORS = [

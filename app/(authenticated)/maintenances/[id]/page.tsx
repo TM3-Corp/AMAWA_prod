@@ -327,7 +327,7 @@ export default function MaintenanceDetailPage() {
                   <div className="mt-1">
                     {(() => {
                       // Check for linked OPEN incident with category (only open incidents override status)
-                      const activeIncident = maintenance.incidents?.find(inc => inc.status === 'OPEN')
+                      const activeIncident = maintenance.incidents?.find((inc: any) => inc.status === 'OPEN')
                       const displayStatus = activeIncident?.category || maintenance.status
 
                       if (isOverdue && maintenance.status === 'PENDING' && !activeIncident) {
@@ -417,7 +417,7 @@ export default function MaintenanceDetailPage() {
                   Incidencias Vinculadas
                 </h3>
                 <div className="space-y-3">
-                  {maintenance.incidents.map((incident) => (
+                  {maintenance.incidents.map((incident: any) => (
                     <div key={incident.id} className="bg-orange-50 border border-orange-200 rounded-lg p-4">
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1">
