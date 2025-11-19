@@ -143,26 +143,45 @@ async function processBatchedMessages(phone: string, currentMessageId: string) {
 
     console.log(`🚀 Processing batch of ${unprocessedMessages.length} messages from ${phone}`)
 
-    // Combine all messages into one
-    const combinedText = unprocessedMessages.map(m => m.textBody).filter(Boolean).join('\n')
-    console.log(`📝 Combined message: "${combinedText}"`)
+    // Check if client is registered
+    const phoneFormats = normalizePhoneForDB(phone)
+    const client = await prisma.client.findFirst({
+      where: { phone: { in: phoneFormats } }
+    })
 
-    // Process with Claude AI
-    const aiResponse = await processMessageWithClaude(combinedText, phone)
-    console.log(`🤖 Claude AI response: ${aiResponse}`)
+    let aiResponse: string
+    let processingNotes: string
 
-    // Send AI response back to client via WhatsApp
-    console.log(`📤 Sending AI response to ${phone}...`)
+    if (!client) {
+      // Unregistered client - send registration info ONCE for entire batch
+      console.log(`⚠️  Unregistered client ${phone} - sending registration info for batch of ${unprocessedMessages.length} messages`)
+
+      aiResponse = `Hola! 👋\n\nVeo que tu número aún no está registrado en nuestro sistema AMAWA.\n\nPara poder ayudarte con mantenciones y servicios de purificación de agua, necesitas estar registrado como cliente.\n\n📞 Contáctanos:\n• WhatsApp: +56 9 2646 7576\n• Email: hola@amawa.cl\n\n¡Estaremos felices de atenderte!`
+
+      processingNotes = `Unregistered client. Batched ${unprocessedMessages.length} messages. Sent registration info.`
+    } else {
+      // Registered client - process with AI
+      const combinedText = unprocessedMessages.map(m => m.textBody).filter(Boolean).join('\n')
+      console.log(`📝 Combined message: "${combinedText}"`)
+
+      aiResponse = await processMessageWithClaude(combinedText, phone)
+      console.log(`🤖 Claude AI response: ${aiResponse}`)
+
+      processingNotes = `AI processed (batched ${unprocessedMessages.length} messages). Preview: ${aiResponse.substring(0, 500)}`
+    }
+
+    // Send response back to client via WhatsApp
+    console.log(`📤 Sending response to ${phone}...`)
     const sendResult = await sendTextMessage(phone, aiResponse)
 
     if (sendResult.success) {
-      console.log(`✅ AI response sent successfully. Message ID: ${sendResult.messageId}`)
+      console.log(`✅ Response sent successfully. Message ID: ${sendResult.messageId}`)
     } else {
-      console.error(`❌ Failed to send AI response: ${sendResult.error}`)
+      console.error(`❌ Failed to send response: ${sendResult.error}`)
     }
 
-    // Update all messages in the batch with AI processing info
-    const processingNotes = `AI processed (batched ${unprocessedMessages.length} messages). Response sent: ${sendResult.success}. Preview: ${aiResponse.substring(0, 500)}`
+    // Update all messages in the batch
+    processingNotes += `. Response sent: ${sendResult.success}`
 
     const messageIds = unprocessedMessages.map(m => m.id)
     await prisma.whatsAppMessage.updateMany({
@@ -276,28 +295,9 @@ async function handleTextMessage(
   try {
     // AI-powered processing (when enabled)
     if (AI_ENABLED) {
-      // Handle unregistered clients with a friendly message
-      if (!client) {
-        console.log(`⚠️  Unregistered client ${from} - sending friendly response`)
-
-        const unregisteredMessage = `Hola! 👋\n\nVeo que tu número aún no está registrado en nuestro sistema AMAWA.\n\nPara poder ayudarte con mantenciones y servicios de purificación de agua, necesitas estar registrado como cliente.\n\n📞 Contáctanos:\n• WhatsApp: +56 9 2646 7576\n• Email: hola@amawa.cl\n\n¡Estaremos felices de atenderte!`
-
-        const sendResult = await sendTextMessage(from, unregisteredMessage)
-
-        await prisma.whatsAppMessage.update({
-          where: { id: storedMessageId },
-          data: {
-            processed: true,
-            processedAt: new Date(),
-            processingNotes: `Unregistered client. Sent registration info. Response sent: ${sendResult.success}`,
-          }
-        })
-
-        return
-      }
-
-      // Database-based debouncing with sliding window
-      console.log(`🤖 Message from ${client.name}: "${text}"`)
+      // Database-based debouncing with sliding window (for both registered and unregistered)
+      const clientName = client ? client.name : `Unknown (${from})`
+      console.log(`🤖 Message from ${clientName}: "${text}"`)
       console.log(`⏱️  Starting ${DEBOUNCE_DELAY}ms debounce timer for this message`)
 
       // Wait for debounce delay
