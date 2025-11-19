@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, User, MapPin, Calendar, CheckCircle, Loader2, Users, AlertCircle } from 'lucide-react'
@@ -51,7 +51,7 @@ const MONTHS = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
 ]
 
-export default function PresencialAssignmentPage() {
+function PresencialContent() {
   const searchParams = useSearchParams()
   const filterMonth = searchParams.get('month') ? parseInt(searchParams.get('month')!) : null
   const filterYear = searchParams.get('year') ? parseInt(searchParams.get('year')!) : null
@@ -427,5 +427,20 @@ export default function PresencialAssignmentPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function PresencialAssignmentPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-purple-600 mx-auto mb-4" />
+          <p className="text-gray-600">Cargando mantenciones presenciales...</p>
+        </div>
+      </div>
+    }>
+      <PresencialContent />
+    </Suspense>
   )
 }
