@@ -124,8 +124,13 @@ async function processWebhookAsync(body: any) {
 // Process batched messages using database-based debouncing (works in serverless)
 async function processBatchedMessages(phone: string, currentMessageId: string) {
   try {
-    // Fetch all unprocessed messages from this phone in the recent window
-    const recentTime = new Date(Date.now() - DEBOUNCE_WINDOW)
+    // Fetch all unprocessed messages from this phone
+    // Note: We look back DEBOUNCE_WINDOW + DEBOUNCE_DELAY to account for:
+    // - Messages arriving over time (DEBOUNCE_WINDOW)
+    // - Time spent waiting (DEBOUNCE_DELAY)
+    const lookBackTime = DEBOUNCE_WINDOW + DEBOUNCE_DELAY
+    const recentTime = new Date(Date.now() - lookBackTime)
+
     const unprocessedMessages = await prisma.whatsAppMessage.findMany({
       where: {
         fromPhone: phone,
