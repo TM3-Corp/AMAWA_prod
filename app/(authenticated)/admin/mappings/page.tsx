@@ -13,7 +13,9 @@ interface Filter {
   id: string
   sku: string
   name: string
+  description: string | null
   category: string
+  unitCost: number | null
 }
 
 interface FilterPackageItem {
