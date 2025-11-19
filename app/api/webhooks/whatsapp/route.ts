@@ -7,8 +7,8 @@ import { sendTextMessage } from '@/lib/whatsapp'
 const AI_ENABLED = process.env.WHATSAPP_AI_ENABLED === 'true'
 
 // Message debouncing configuration
-const DEBOUNCE_DELAY = 5000 // 5 seconds - wait for more messages before processing
-const DEBOUNCE_WINDOW = 10000 // 10 seconds - look back for recent messages to batch
+const DEBOUNCE_DELAY = 8000 // 8 seconds - wait for more messages before processing (slow typers!)
+const DEBOUNCE_WINDOW = 15000 // 15 seconds - look back for recent messages to batch
 
 // Helper to wait (Promise-based delay that works in serverless)
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
