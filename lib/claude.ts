@@ -20,6 +20,11 @@ const SCHEMA_CONTEXT = `
 You are an AI assistant for AMAWA, a water purification service company in Chile.
 You help clients manage their water filter maintenance through WhatsApp.
 
+IMPORTANT SECURITY RULE:
+- You can ONLY access data for the authenticated user (the phone number provided in the message)
+- You CANNOT access, view, or share information about other clients
+- If a user asks about another client's data, politely refuse and explain you can only help with their own account
+
 Database Schema:
 - clients: Customer information (name, phone, email, address, comuna, status)
 - maintenances: Service appointments with types:
@@ -32,10 +37,10 @@ Database Schema:
 - contracts: Service plans (planCode, planType, monthlyValueCLP)
 
 Available actions:
-- Get maintenance status
-- Reschedule maintenance
-- Confirm maintenance completion
-- View maintenance history
+- Get maintenance status (only for the authenticated user)
+- Reschedule maintenance (only for the authenticated user)
+- Confirm maintenance completion (only for the authenticated user)
+- View maintenance history (only for the authenticated user)
 `
 
 // Tool definitions for Claude
@@ -106,8 +111,15 @@ const tools: Anthropic.Tool[] = [
   },
 ]
 
-// Tool execution functions
-async function executeGetClientMaintenances(phone: string) {
+// Tool execution functions with security validation
+async function executeGetClientMaintenances(phone: string, authenticatedPhone: string) {
+  // SECURITY: Validate phone matches authenticated user
+  if (phone !== authenticatedPhone) {
+    return {
+      error: 'Por razones de privacidad, solo puedes acceder a tu propia información. No puedo compartir datos de otros clientes.'
+    }
+  }
+
   const client = await prisma.client.findFirst({
     where: { phone },
     include: {
@@ -208,7 +220,14 @@ async function executeConfirmMaintenanceCompletion(maintenanceId: string, notes?
   }
 }
 
-async function executeGetClientInfo(phone: string) {
+async function executeGetClientInfo(phone: string, authenticatedPhone: string) {
+  // SECURITY: Validate phone matches authenticated user
+  if (phone !== authenticatedPhone) {
+    return {
+      error: 'Por razones de privacidad, solo puedes acceder a tu propia información. No puedo compartir datos de otros clientes.'
+    }
+  }
+
   const client = await prisma.client.findFirst({
     where: { phone },
     include: {
@@ -251,16 +270,16 @@ async function executeGetClientInfo(phone: string) {
 }
 
 // Execute tool based on name
-async function executeTool(toolName: string, toolInput: any) {
+async function executeTool(toolName: string, toolInput: any, authenticatedPhone: string) {
   switch (toolName) {
     case 'get_client_maintenances':
-      return executeGetClientMaintenances(toolInput.phone)
+      return executeGetClientMaintenances(toolInput.phone, authenticatedPhone)
     case 'reschedule_maintenance':
       return executeRescheduleMaintenance(toolInput.maintenanceId, toolInput.newDate)
     case 'confirm_maintenance_completion':
       return executeConfirmMaintenanceCompletion(toolInput.maintenanceId, toolInput.notes)
     case 'get_client_info':
-      return executeGetClientInfo(toolInput.phone)
+      return executeGetClientInfo(toolInput.phone, authenticatedPhone)
     default:
       return { error: 'Tool not found' }
   }
@@ -305,7 +324,7 @@ export async function processMessageWithClaude(
 
       if (!toolUseBlock) break
 
-      const toolResult = await executeTool(toolUseBlock.name, toolUseBlock.input)
+      const toolResult = await executeTool(toolUseBlock.name, toolUseBlock.input, phone)
 
       messages.push({
         role: 'assistant',
