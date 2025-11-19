@@ -324,28 +324,35 @@ export async function processMessageWithClaude(
 
     // Handle tool use loop
     while (response.stop_reason === 'tool_use') {
-      const toolUseBlock = response.content.find(
+      // Find ALL tool_use blocks (Claude can return multiple tools in one response)
+      const toolUseBlocks = response.content.filter(
         (block) => block.type === 'tool_use'
-      ) as Anthropic.ToolUseBlock | undefined
+      ) as Anthropic.ToolUseBlock[]
 
-      if (!toolUseBlock) break
+      if (toolUseBlocks.length === 0) break
 
-      const toolResult = await executeTool(toolUseBlock.name, toolUseBlock.input, phone)
+      // Execute ALL tools
+      const toolResults = await Promise.all(
+        toolUseBlocks.map(async (toolBlock) => {
+          const result = await executeTool(toolBlock.name, toolBlock.input, phone)
+          return {
+            type: 'tool_result' as const,
+            tool_use_id: toolBlock.id,
+            content: JSON.stringify(result),
+          }
+        })
+      )
 
+      // Add assistant message with all tool_use blocks
       messages.push({
         role: 'assistant',
         content: response.content,
       })
 
+      // Add user message with ALL tool_results
       messages.push({
         role: 'user',
-        content: [
-          {
-            type: 'tool_result',
-            tool_use_id: toolUseBlock.id,
-            content: JSON.stringify(toolResult),
-          },
-        ],
+        content: toolResults,
       })
 
       response = await anthropic.messages.create({
