@@ -19,6 +19,7 @@ export default function TechnicianAssignmentModal({
   const [technicians, setTechnicians] = useState<string[]>([])
   const [technicianName, setTechnicianName] = useState(currentTechnician || '')
   const [isLoading, setIsLoading] = useState(false)
+  const [fetchingTechs, setFetchingTechs] = useState(true)
   const [error, setError] = useState('')
 
   // Fetch technicians from API
@@ -37,13 +38,19 @@ export default function TechnicianAssignmentModal({
 
   async function fetchTechnicians() {
     try {
+      setFetchingTechs(true)
       const response = await fetch('/api/technicians')
       if (response.ok) {
         const data = await response.json()
-        setTechnicians(data.technicians)
+        setTechnicians(data.technicians || [])
+      } else {
+        setTechnicians([])
       }
     } catch (err) {
       console.error('Error fetching technicians:', err)
+      setTechnicians([])
+    } finally {
+      setFetchingTechs(false)
     }
   }
 
@@ -112,14 +119,14 @@ export default function TechnicianAssignmentModal({
               required
             />
             <datalist id="technicians">
-              {technicians.map(tech => (
+              {(technicians || []).map(tech => (
                 <option key={tech} value={tech} />
               ))}
             </datalist>
           </div>
 
           {/* Quick Select */}
-          {technicians.length > 0 && (
+          {!fetchingTechs && technicians && technicians.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Selección Rápida
@@ -141,6 +148,12 @@ export default function TechnicianAssignmentModal({
                   </button>
                 ))}
               </div>
+            </div>
+          )}
+
+          {fetchingTechs && (
+            <div className="text-sm text-gray-500 text-center">
+              Cargando técnicos disponibles...
             </div>
           )}
 

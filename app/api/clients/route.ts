@@ -7,16 +7,45 @@ export async function GET(request: Request) {
     const limit = parseInt(searchParams.get('limit') || '50')
     const page = parseInt(searchParams.get('page') || '1')
     const search = searchParams.get('search') || ''
+    const comuna = searchParams.get('comuna') || ''
+    const status = searchParams.get('status') || ''
 
-    const where = search
-      ? {
-          OR: [
-            { name: { contains: search, mode: 'insensitive' as const } },
-            { comuna: { contains: search, mode: 'insensitive' as const } },
-            { phone: { contains: search, mode: 'insensitive' as const } },
-          ],
-        }
-      : {}
+    // Build where clause with filters
+    const where: any = {}
+
+    // Improved search filter: split by spaces and require all terms to match
+    if (search) {
+      const searchTerms = search.trim().split(/\s+/)
+
+      // Each term must match at least one of the fields (name, comuna, or phone)
+      where.AND = searchTerms.map(term => ({
+        OR: [
+          { name: { contains: term, mode: 'insensitive' as const } },
+          { comuna: { contains: term, mode: 'insensitive' as const } },
+          { phone: { contains: term, mode: 'insensitive' as const } },
+        ]
+      }))
+    }
+
+    // Comuna filter (exact match)
+    if (comuna) {
+      // If we already have AND from search, append comuna filter
+      if (where.AND) {
+        where.AND.push({ comuna })
+      } else {
+        where.comuna = comuna
+      }
+    }
+
+    // Status filter (exact match)
+    if (status) {
+      // If we already have AND from search/comuna, append status filter
+      if (where.AND) {
+        where.AND.push({ status })
+      } else {
+        where.status = status
+      }
+    }
 
     const [clients, total] = await Promise.all([
       prisma.client.findMany({

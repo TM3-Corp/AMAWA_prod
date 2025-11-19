@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import prisma from '@/lib/prisma'
 
 // Webhook verification (GET) - Meta will call this to verify our webhook
 export async function GET(request: NextRequest) {
@@ -40,9 +41,8 @@ export async function POST(request: NextRequest) {
 
     console.log('📱 WhatsApp webhook received:', JSON.stringify(body, null, 2))
 
-    // Meta requires a 200 response immediately
-    // Process async in the background
-    processWebhookAsync(body)
+    // Process webhook events (fast - completes in milliseconds)
+    await processWebhookAsync(body)
 
     return NextResponse.json({ status: 'ok' }, { status: 200 })
   } catch (error) {
@@ -94,10 +94,53 @@ async function handleIncomingMessage(message: any, metadata: any) {
 
     console.log(`📨 Message from ${from}:`, message)
 
+    // Find client by phone number
+    const client = await prisma.client.findFirst({
+      where: { phone: from }
+    })
+
+    // Extract message content based on type
+    let textBody: string | null = null
+    let interactiveType: string | null = null
+    let buttonId: string | null = null
+    let buttonTitle: string | null = null
+
+    if (message.type === 'text') {
+      textBody = message.text?.body
+    } else if (message.type === 'interactive') {
+      interactiveType = message.interactive?.type
+      if (message.interactive?.button_reply) {
+        buttonId = message.interactive.button_reply.id
+        buttonTitle = message.interactive.button_reply.title
+      }
+    }
+
+    // Store message in database
+    const storedMessage = await prisma.whatsAppMessage.create({
+      data: {
+        waMessageId: messageId,
+        fromPhone: from,
+        clientId: client?.id || null,
+        messageType: message.type,
+        textBody,
+        interactiveType,
+        buttonId,
+        buttonTitle,
+        rawPayload: message,
+        timestamp: new Date(parseInt(timestamp) * 1000), // Convert Unix timestamp
+      }
+    })
+
+    console.log(`✅ Message stored in database with ID: ${storedMessage.id}`)
+
     // Handle different message types
     switch (message.type) {
       case 'text':
-        await handleTextMessage(from, message.text.body, messageId)
+        await handleTextMessage(from, message.text.body, messageId, storedMessage.id, client)
+        break
+
+      case 'interactive':
+        await handleInteractiveMessage(from, message.interactive, messageId, storedMessage.id, client)
         break
 
       case 'image':
@@ -117,30 +160,181 @@ async function handleIncomingMessage(message: any, metadata: any) {
 }
 
 // Handle text messages
-async function handleTextMessage(from: string, text: string, messageId: string) {
+async function handleTextMessage(
+  from: string,
+  text: string,
+  messageId: string,
+  storedMessageId: string,
+  client: any
+) {
   try {
+    if (!client) {
+      console.log(`⚠️  Client not found for phone: ${from}`)
+      return
+    }
+
     const lowerText = text.toLowerCase().trim()
+    let processingNotes: string | null = null
+    let maintenanceId: string | null = null
+
+    // Find the client's latest pending or scheduled maintenance
+    const latestMaintenance = await prisma.maintenance.findFirst({
+      where: {
+        clientId: client.id,
+        status: { in: ['PENDING', 'SCHEDULED'] }
+      },
+      orderBy: { scheduledDate: 'asc' }
+    })
 
     // Address confirmation responses
-    if (lowerText === 'si' || lowerText === 'sí' || lowerText === 'yes') {
-      console.log(`✅ ${from} confirmed address`)
-      // TODO: Mark address as confirmed in database
-      // TODO: Update work order status
+    if (lowerText === 'si' || lowerText === 'sí' || lowerText === 'yes' || lowerText === 'confirmo') {
+      console.log(`✅ ${from} confirmed (likely address or maintenance)`)
+
+      if (latestMaintenance) {
+        // Update maintenance status to SCHEDULED
+        await prisma.maintenance.update({
+          where: { id: latestMaintenance.id },
+          data: { status: 'SCHEDULED' }
+        })
+        maintenanceId = latestMaintenance.id
+        processingNotes = `Confirmed maintenance ${latestMaintenance.id}. Status updated to SCHEDULED.`
+        console.log(`✅ Maintenance ${latestMaintenance.id} confirmed for client ${client.name}`)
+      } else {
+        processingNotes = 'Client confirmed but no pending maintenance found.'
+      }
+    }
+
+    // Rescheduling requests
+    if (lowerText.includes('reagendar') || lowerText.includes('cambiar fecha') || lowerText.includes('otro día')) {
+      console.log(`📅 ${from} requested to reschedule`)
+
+      if (latestMaintenance) {
+        await prisma.maintenance.update({
+          where: { id: latestMaintenance.id },
+          data: { status: 'RESCHEDULED' }
+        })
+        maintenanceId = latestMaintenance.id
+        processingNotes = `Client requested reschedule for maintenance ${latestMaintenance.id}. Status updated to RESCHEDULED.`
+        console.log(`📅 Maintenance ${latestMaintenance.id} marked for rescheduling`)
+      } else {
+        processingNotes = 'Client requested reschedule but no pending maintenance found.'
+      }
     }
 
     // Maintenance completion confirmation
     if (lowerText.includes('cambi') && lowerText.includes('filtro')) {
       console.log(`✅ ${from} confirmed filter change`)
-      // TODO: Update maintenance record with actual date
+
+      if (latestMaintenance) {
+        await prisma.maintenance.update({
+          where: { id: latestMaintenance.id },
+          data: {
+            status: 'COMPLETED',
+            actualDate: new Date(),
+            completedDate: new Date()
+          }
+        })
+        maintenanceId = latestMaintenance.id
+        processingNotes = `Client confirmed filter change. Maintenance ${latestMaintenance.id} marked as COMPLETED.`
+        console.log(`✅ Maintenance ${latestMaintenance.id} marked as completed`)
+      } else {
+        processingNotes = 'Client confirmed filter change but no active maintenance found.'
+      }
     }
 
-    // TODO: Add more response handling logic
-    // - Check if client exists in database
-    // - Link message to client record
-    // - Update relevant records (work orders, maintenances)
-    // - Send automated responses
+    // Update the stored message with processing information
+    if (processingNotes) {
+      await prisma.whatsAppMessage.update({
+        where: { id: storedMessageId },
+        data: {
+          processed: true,
+          processedAt: new Date(),
+          processingNotes,
+          relatedMaintenanceId: maintenanceId
+        }
+      })
+    }
   } catch (error) {
     console.error('Error handling text message:', error)
+  }
+}
+
+// Handle interactive button responses
+async function handleInteractiveMessage(
+  from: string,
+  interactive: any,
+  messageId: string,
+  storedMessageId: string,
+  client: any
+) {
+  try {
+    if (!client) {
+      console.log(`⚠️  Client not found for phone: ${from}`)
+      return
+    }
+
+    const buttonReply = interactive?.button_reply
+    if (!buttonReply) return
+
+    const buttonId = buttonReply.id
+    let processingNotes: string | null = null
+    let maintenanceId: string | null = null
+
+    console.log(`🔘 Button clicked by ${from}: ${buttonId} (${buttonReply.title})`)
+
+    // Find the client's latest pending or scheduled maintenance
+    const latestMaintenance = await prisma.maintenance.findFirst({
+      where: {
+        clientId: client.id,
+        status: { in: ['PENDING', 'SCHEDULED'] }
+      },
+      orderBy: { scheduledDate: 'asc' }
+    })
+
+    // Handle confirmation buttons
+    if (buttonId.includes('confirm') || buttonId.includes('yes')) {
+      if (latestMaintenance) {
+        await prisma.maintenance.update({
+          where: { id: latestMaintenance.id },
+          data: { status: 'SCHEDULED' }
+        })
+        maintenanceId = latestMaintenance.id
+        processingNotes = `Button confirmation received. Maintenance ${latestMaintenance.id} status updated to SCHEDULED.`
+        console.log(`✅ Maintenance ${latestMaintenance.id} confirmed via button`)
+      } else {
+        processingNotes = 'Button confirmation received but no pending maintenance found.'
+      }
+    }
+
+    // Handle reschedule/help buttons
+    if (buttonId.includes('reschedule') || buttonId.includes('help')) {
+      if (latestMaintenance) {
+        await prisma.maintenance.update({
+          where: { id: latestMaintenance.id },
+          data: { status: 'RESCHEDULED' }
+        })
+        maintenanceId = latestMaintenance.id
+        processingNotes = `Reschedule requested via button. Maintenance ${latestMaintenance.id} status updated to RESCHEDULED.`
+        console.log(`📅 Maintenance ${latestMaintenance.id} marked for rescheduling via button`)
+      } else {
+        processingNotes = 'Reschedule requested via button but no pending maintenance found.'
+      }
+    }
+
+    // Update the stored message with processing information
+    if (processingNotes) {
+      await prisma.whatsAppMessage.update({
+        where: { id: storedMessageId },
+        data: {
+          processed: true,
+          processedAt: new Date(),
+          processingNotes,
+          relatedMaintenanceId: maintenanceId
+        }
+      })
+    }
+  } catch (error) {
+    console.error('Error handling interactive message:', error)
   }
 }
 

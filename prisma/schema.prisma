@@ -23,6 +23,7 @@ model Client {
 
   // Address
   address          String?
+  addressNumber    String?        @map("address_number")    // Street number extracted from address
   propertyType     String?        @map("property_type")
   propertyNumber   String?        @map("property_number")
   comuna           String?
@@ -41,6 +42,7 @@ model Client {
   incidents        Incident[]
   equipment        Equipment[]
   contracts        Contract[]
+  whatsappMessages WhatsAppMessage[]
 
   @@map("clients")
 }
@@ -82,6 +84,8 @@ model Maintenance {
   client        Client                   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   workOrder     WorkOrder?               @relation(fields: [workOrderId], references: [id])
   filterUsage   MaintenanceFilterUsage[] // Track filters used in this maintenance
+  incidents     Incident[]               // NEW: Incidents linked to this maintenance
+  whatsappMessages WhatsAppMessage[]     // WhatsApp messages related to this maintenance
 
   @@unique([clientId, cycleNumber], name: "unique_client_cycle")
   @@index([scheduledDate])
@@ -376,6 +380,7 @@ model WorkOrderFilterUsage {
 model Incident {
   id                String    @id @default(uuid())
   clientId          String    @map("client_id")
+  maintenanceId     String?   @map("maintenance_id")      // NEW: Link to specific maintenance
 
   // Equipment details (from installation)
   equipmentType     String?   @map("equipment_type")
@@ -406,14 +411,67 @@ model Incident {
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")
 
-  client            Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client            Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  maintenance       Maintenance? @relation(fields: [maintenanceId], references: [id], onDelete: SetNull)
 
   @@index([category])
+  @@index([maintenanceId])
   @@index([vtDate])
   @@index([month])
   @@index([status])
   @@index([createdAt])
   @@map("incidents")
+}
+
+// ============================================
+// WHATSAPP MESSAGING SYSTEM
+// ============================================
+
+model WhatsAppMessage {
+  id                String    @id @default(uuid())
+
+  // Message identification
+  waMessageId       String    @unique @map("wa_message_id")    // WhatsApp's message ID
+  fromPhone         String    @map("from_phone")              // Sender's phone number (56966083433)
+
+  // Client linking
+  clientId          String?   @map("client_id")               // Link to client (null if not found)
+
+  // Message content
+  messageType       String    @map("message_type")            // "text" | "interactive" | "button" | "image" | etc.
+  textBody          String?   @map("text_body")               // Text content
+  interactiveType   String?   @map("interactive_type")        // "button_reply" | "list_reply"
+  buttonId          String?   @map("button_id")               // ID of clicked button
+  buttonTitle       String?   @map("button_title")            // Title of clicked button
+
+  // Context and metadata
+  rawPayload        Json      @map("raw_payload")             // Full webhook payload for debugging
+  timestamp         DateTime                                  // When message was received by WhatsApp
+
+  // Processing status
+  processed         Boolean   @default(false)                 // Has this message been acted upon?
+  processedAt       DateTime? @map("processed_at")            // When was it processed
+  processingNotes   String?   @map("processing_notes")        // What action was taken
+
+  // Maintenance linking (for automatic status updates)
+  relatedMaintenanceId String? @map("related_maintenance_id") // Link to maintenance if relevant
+
+  // Timestamps
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  client            Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  relatedMaintenance Maintenance? @relation(fields: [relatedMaintenanceId], references: [id], onDelete: SetNull)
+
+  @@index([fromPhone])
+  @@index([clientId])
+  @@index([relatedMaintenanceId])
+  @@index([processed])
+  @@index([timestamp])
+  @@index([messageType])
+  @@index([createdAt])
+  @@map("whatsapp_messages")
 }
 
 // Enums
@@ -449,10 +507,8 @@ enum IncidentType {
 }
 
 enum IncidentStatus {
-  OPEN
-  IN_PROGRESS
-  RESOLVED
-  CLOSED
+  OPEN       @map("open")        // Abierta
+  RESOLVED   @map("resolved")    // Resuelta
 }
 
 enum Priority {

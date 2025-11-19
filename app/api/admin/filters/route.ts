@@ -1,28 +1,24 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
 /**
  * GET /api/admin/filters
- * List all filter master records
+ * List all filters
  */
 export async function GET() {
   try {
     const filters = await prisma.filter.findMany({
-      orderBy: [
-        { category: 'asc' },
-        { sku: 'asc' }
-      ]
+      orderBy: { sku: 'asc' }
     })
 
     return NextResponse.json({
       success: true,
       data: filters
     })
-
   } catch (error) {
     console.error('Error fetching filters:', error)
     return NextResponse.json(
-      { success: false, error: 'Error al obtener filtros' },
+      { success: false, error: 'Failed to fetch filters' },
       { status: 500 }
     )
   }
@@ -30,94 +26,51 @@ export async function GET() {
 
 /**
  * POST /api/admin/filters
- * Create a new filter master record
- *
- * Body: {
- *   sku: string (required, unique)
- *   name: string (required)
- *   description?: string (optional)
- *   category: "UF" | "RO" (required)
- *   unitCost?: number (optional)
- * }
+ * Create a new filter
  */
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
     const body = await request.json()
     const { sku, name, description, category, unitCost } = body
 
-    // Validate required fields
-    if (!sku || sku.trim() === '') {
+    // Validation
+    if (!sku || !name || !category) {
       return NextResponse.json(
-        { success: false, error: 'El SKU es requerido' },
+        { success: false, error: 'SKU, nombre y categoría son requeridos' },
         { status: 400 }
       )
     }
 
-    if (!name || name.trim() === '') {
-      return NextResponse.json(
-        { success: false, error: 'El nombre es requerido' },
-        { status: 400 }
-      )
-    }
-
-    if (!category || !['UF', 'RO'].includes(category)) {
-      return NextResponse.json(
-        { success: false, error: 'La categoría debe ser "UF" o "RO"' },
-        { status: 400 }
-      )
-    }
-
-    // Validate unit cost if provided
-    const parsedUnitCost = unitCost ? parseFloat(unitCost) : null
-    if (parsedUnitCost !== null && (isNaN(parsedUnitCost) || parsedUnitCost < 0)) {
-      return NextResponse.json(
-        { success: false, error: 'El costo unitario debe ser un número válido mayor o igual a 0' },
-        { status: 400 }
-      )
-    }
-
-    // Check for existing SKU (unique constraint)
-    const existingFilter = await prisma.filter.findUnique({
-      where: { sku: sku.trim().toUpperCase() }
+    // Check if SKU already exists
+    const existing = await prisma.filter.findUnique({
+      where: { sku }
     })
 
-    if (existingFilter) {
+    if (existing) {
       return NextResponse.json(
-        { success: false, error: `Ya existe un filtro con el SKU "${sku.toUpperCase()}"` },
-        { status: 409 }
+        { success: false, error: `El filtro con SKU "${sku}" ya existe` },
+        { status: 400 }
       )
     }
 
-    // Create the filter
-    const newFilter = await prisma.filter.create({
+    const filter = await prisma.filter.create({
       data: {
-        sku: sku.trim().toUpperCase(),
-        name: name.trim(),
-        description: description?.trim() || null,
+        sku,
+        name,
+        description: description || null,
         category,
-        unitCost: parsedUnitCost
+        unitCost: unitCost ? parseFloat(unitCost) : null
       }
     })
 
     return NextResponse.json({
       success: true,
-      data: newFilter,
-      message: 'Filtro creado exitosamente'
-    }, { status: 201 })
-
-  } catch (error: any) {
+      data: filter
+    })
+  } catch (error) {
     console.error('Error creating filter:', error)
-
-    // Handle Prisma unique constraint errors
-    if (error.code === 'P2002') {
-      return NextResponse.json(
-        { success: false, error: 'Ya existe un filtro con este SKU' },
-        { status: 409 }
-      )
-    }
-
     return NextResponse.json(
-      { success: false, error: 'Error al crear el filtro' },
+      { success: false, error: 'Failed to create filter' },
       { status: 500 }
     )
   }

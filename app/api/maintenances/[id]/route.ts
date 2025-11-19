@@ -27,6 +27,20 @@ export async function GET(
           include: {
             filter: true
           }
+        },
+        incidents: {
+          select: {
+            id: true,
+            category: true,
+            status: true,
+            createdAt: true,
+            vtDate: true,
+            vtReason: true,
+            comments: true
+          },
+          orderBy: {
+            createdAt: 'desc'
+          }
         }
       }
     })

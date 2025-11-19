@@ -106,36 +106,39 @@ export function PlanInformationCard({
         )}
       </div>
 
-      {/* Payment Methods */}
+      {/* Payment Information */}
       <div className="border-t border-gray-100 mt-6 pt-6">
         <div className="flex items-center gap-2 mb-3">
           <CreditCard className="w-4 h-4 text-gray-400" />
-          <span className="text-xs text-gray-500 uppercase tracking-wide">Métodos de Pago</span>
+          <span className="text-xs text-gray-500 uppercase tracking-wide">Información de Pago</span>
         </div>
 
-        <div className="space-y-2">
-          {tokuEnabled && (
-            <div className="flex items-center gap-2 text-sm">
+        <div className="space-y-3">
+          {/* Payment Method */}
+          <div>
+            <p className="text-xs text-gray-500 mb-1">Método de Pago</p>
+            <div className="flex items-center gap-2">
               <div className="w-5 h-5 bg-blue-100 rounded-full flex items-center justify-center">
                 <Check className="w-3 h-3 text-blue-600" />
               </div>
-              <span className="font-medium text-gray-700">TOKU</span>
-              <span className="text-xs text-gray-500 ml-auto">Habilitado</span>
+              <span className="font-semibold text-gray-800">
+                {tokuEnabled ? 'TOKU' : 'Transferencia'}
+              </span>
             </div>
-          )}
+          </div>
 
-          {needsInvoice && (
-            <div className="flex items-center gap-2 text-sm">
+          {/* Invoice Type */}
+          <div>
+            <p className="text-xs text-gray-500 mb-1">Tipo de Documento</p>
+            <div className="flex items-center gap-2">
               <div className="w-5 h-5 bg-purple-100 rounded-full flex items-center justify-center">
                 <Check className="w-3 h-3 text-purple-600" />
               </div>
-              <span className="font-medium text-gray-700">Requiere Factura</span>
+              <span className="font-semibold text-gray-800">
+                {needsInvoice ? 'Factura' : 'Boleta'}
+              </span>
             </div>
-          )}
-
-          {!tokuEnabled && !needsInvoice && (
-            <p className="text-sm text-gray-400">No especificado</p>
-          )}
+          </div>
         </div>
       </div>
     </div>

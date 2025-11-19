@@ -15,7 +15,9 @@ import {
   Menu,
   X,
   ChevronDown,
-  Shield
+  Shield,
+  AlertTriangle,
+  MessageSquare
 } from 'lucide-react'
 
 interface User {
@@ -64,14 +66,16 @@ export default function Navbar() {
     { name: 'Clientes', href: '/clients', icon: Users },
     { name: 'Mantenciones', href: '/maintenances', icon: Wrench },
     { name: 'Órdenes de Trabajo', href: '/work-orders', icon: FileText },
+    { name: 'Incidencias', href: '/admin/incidencias', icon: AlertTriangle },
     { name: 'Calendario', href: '/calendar', icon: Calendar },
-    { name: 'Inventario', href: '/inventory', icon: Package },
+    // Inventario moved to Admin dropdown
   ]
 
   const adminNavigation = [
     { name: 'Inventario de Equipos', href: '/admin/equipment-inventory', icon: Package },
     { name: 'Inventario de Filtros', href: '/admin/filter-inventory', icon: Package },
     { name: 'Mapeos Equipo-Filtro', href: '/admin/mappings', icon: Settings },
+    { name: 'Mensajes WhatsApp', href: '/admin/whatsapp-messages', icon: MessageSquare },
     { name: 'Gestión de Usuarios', href: '/users', icon: Shield },
   ]
 
@@ -82,8 +86,26 @@ export default function Navbar() {
     CLIENT: 'Cliente',
   }
 
-  if (!user && !loading) {
-    return null // Don't show navbar if not authenticated
+  // Show skeleton while loading, hide if not authenticated
+  if (!user) {
+    if (loading) {
+      return (
+        <nav className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between h-16">
+              <div className="flex items-center">
+                <div className="h-12 w-32 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+              <div className="flex items-center space-x-4">
+                <div className="h-8 w-20 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-8 w-24 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+            </div>
+          </div>
+        </nav>
+      )
+    }
+    return null // Not authenticated and not loading
   }
 
   return (

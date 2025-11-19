@@ -515,26 +515,32 @@ export function ClientForm({ initialData, onSubmit, onCancel, submitLabel = 'Cre
             />
           </div>
 
-          <div className="md:col-span-2 space-y-3">
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={formData.tokuEnabled || false}
-                onChange={(e) => setFormData({ ...formData, tokuEnabled: e.target.checked })}
-                className="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
-              />
-              <span className="text-sm font-medium text-gray-700">TOKU Habilitado</span>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Método de Pago
             </label>
+            <select
+              value={formData.tokuEnabled ? 'TOKU' : 'Transferencia'}
+              onChange={(e) => setFormData({ ...formData, tokuEnabled: e.target.value === 'TOKU' })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            >
+              <option value="TOKU">TOKU</option>
+              <option value="Transferencia">Transferencia</option>
+            </select>
+          </div>
 
-            <label className="flex items-center">
-              <input
-                type="checkbox"
-                checked={formData.needsInvoice || false}
-                onChange={(e) => setFormData({ ...formData, needsInvoice: e.target.checked })}
-                className="mr-2 h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
-              />
-              <span className="text-sm font-medium text-gray-700">Requiere Factura</span>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Tipo de Documento
             </label>
+            <select
+              value={formData.needsInvoice ? 'Factura' : 'Boleta'}
+              onChange={(e) => setFormData({ ...formData, needsInvoice: e.target.value === 'Factura' })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            >
+              <option value="Factura">Factura (Empresa)</option>
+              <option value="Boleta">Boleta (Persona)</option>
+            </select>
           </div>
         </div>
       </div>

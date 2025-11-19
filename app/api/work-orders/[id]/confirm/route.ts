@@ -118,7 +118,7 @@ export async function POST(
       })
     }
 
-    // Update work order status to GENERATED
+    // Update work order status to GENERATED and update all linked maintenances to SCHEDULED
     const updatedWorkOrder = await prisma.workOrder.update({
       where: { id: params.id },
       data: {
@@ -136,6 +136,17 @@ export async function POST(
             filter: true
           }
         }
+      }
+    })
+
+    // Automatically update all linked maintenances to SCHEDULED status
+    await prisma.maintenance.updateMany({
+      where: {
+        workOrderId: params.id,
+        status: 'PENDING' // Only update if still pending
+      },
+      data: {
+        status: 'SCHEDULED'
       }
     })
 

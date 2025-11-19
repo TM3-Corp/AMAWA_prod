@@ -28,6 +28,9 @@ export async function GET(request: NextRequest) {
         scheduledDate: {
           gte: startDate,
           lte: endDate
+        },
+        client: {
+          status: 'ACTIVE' // Only show maintenances for active clients (consistent with maintenances API)
         }
       },
       include: {

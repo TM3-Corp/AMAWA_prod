@@ -15,6 +15,7 @@ interface Client {
   propertyNumber: string | null
   installationDate: Date | string | null
   contactChannel: string | null
+  status: string
 }
 
 interface ClientDetailsCardProps {
@@ -36,6 +37,19 @@ export function ClientDetailsCard({ client, tenure }: ClientDetailsCardProps) {
 
   return (
     <div className="bg-white rounded-xl shadow-lg p-6 border border-gray-100">
+      {/* INACTIVE Status Badge */}
+      {client.status === 'INACTIVE' && (
+        <div className="mb-4 px-4 py-3 bg-red-50 border-l-4 border-red-500 rounded">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">⚠️</span>
+            <div>
+              <p className="text-red-900 font-bold text-sm">CLIENTE INACTIVO</p>
+              <p className="text-red-700 text-xs">Este cliente ya no está activo en el sistema</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header with Avatar */}
       <div className="flex items-start gap-4 mb-6">
         <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xl font-bold shadow-md">

@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const dateFrom = searchParams.get('dateFrom')
     const dateTo = searchParams.get('dateTo')
     const search = searchParams.get('search') // Search by client name
-    const limit = parseInt(searchParams.get('limit') || '50')
+    const limit = parseInt(searchParams.get('limit') || '5000') // Increased from 1000 to handle all maintenances
     const offset = parseInt(searchParams.get('offset') || '0')
 
     // Build where clause
@@ -65,7 +65,13 @@ export async function GET(request: NextRequest) {
         name: {
           contains: search,
           mode: 'insensitive'
-        }
+        },
+        status: 'ACTIVE' // Only show maintenances for active clients
+      }
+    } else {
+      // Always filter to only show maintenances for active clients
+      where.client = {
+        status: 'ACTIVE'
       }
     }
 
@@ -87,6 +93,23 @@ export async function GET(request: NextRequest) {
           include: {
             filter: true
           }
+        },
+        incidents: {
+          select: {
+            id: true,
+            category: true,
+            status: true,
+            createdAt: true
+          },
+          where: {
+            status: {
+              in: ['OPEN', 'IN_PROGRESS'] // Only show active incidents
+            }
+          },
+          orderBy: {
+            createdAt: 'desc'
+          },
+          take: 1 // Only get the most recent active incident
         }
       },
       orderBy: {

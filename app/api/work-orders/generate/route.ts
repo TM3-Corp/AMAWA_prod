@@ -36,14 +36,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!['DOMICILIO', 'PRESENCIAL', 'Delivery', 'Presencial'].includes(deliveryType)) {
+    if (!['Delivery', 'Presencial'].includes(deliveryType)) {
       return NextResponse.json(
-        { error: 'Tipo de entrega debe ser DOMICILIO o PRESENCIAL' },
+        { error: 'Tipo de entrega debe ser Delivery o Presencial' },
         { status: 400 }
       )
     }
 
-    // Check if work order already exists for this period
+    // Check if an active work order already exists for this period
     const existingWorkOrder = await prisma.workOrder.findUnique({
       where: {
         unique_period_delivery: {
@@ -54,14 +54,23 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    if (existingWorkOrder) {
+    // Only block if there's a DRAFT or GENERATED work order
+    // Cancelled work orders can be replaced
+    if (existingWorkOrder && (existingWorkOrder.status === 'DRAFT' || existingWorkOrder.status === 'GENERATED')) {
       return NextResponse.json(
         {
-          error: 'Ya existe una orden de trabajo para este período',
+          error: 'Ya existe una orden de trabajo activa para este período',
           workOrderId: existingWorkOrder.id
         },
         { status: 409 }
       )
+    }
+
+    // If there's a cancelled work order, delete it first to allow new one
+    if (existingWorkOrder && existingWorkOrder.status === 'CANCELLED') {
+      await prisma.workOrder.delete({
+        where: { id: existingWorkOrder.id }
+      })
     }
 
     // Get maintenances scheduled for this month
@@ -76,6 +85,9 @@ export async function POST(request: NextRequest) {
         scheduledDate: {
           gte: startDate,
           lte: endDate
+        },
+        client: {
+          status: 'ACTIVE' // Only include maintenances for active clients
         }
       },
       include: {

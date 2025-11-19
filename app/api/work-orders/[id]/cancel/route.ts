@@ -93,10 +93,27 @@ export async function POST(
       })
     }
 
-    // Unlink maintenances from this work order
+    // Unlink maintenances from this work order and reset SCHEDULED ones back to PENDING
     await prisma.maintenance.updateMany({
-      where: { workOrderId: workOrder.id },
-      data: { workOrderId: null }
+      where: {
+        workOrderId: workOrder.id,
+        status: 'SCHEDULED' // Only reset status if it was SCHEDULED
+      },
+      data: {
+        workOrderId: null,
+        status: 'PENDING'
+      }
+    })
+
+    // Unlink any other maintenances (with different statuses) without changing their status
+    await prisma.maintenance.updateMany({
+      where: {
+        workOrderId: workOrder.id,
+        status: { not: 'SCHEDULED' }
+      },
+      data: {
+        workOrderId: null
+      }
     })
 
     // Update work order status to CANCELLED
