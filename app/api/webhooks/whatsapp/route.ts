@@ -124,10 +124,6 @@ async function processWebhookAsync(body: any) {
 // Process batched messages using database-based debouncing (works in serverless)
 async function processBatchedMessages(phone: string, currentMessageId: string) {
   try {
-    // Wait for debounce delay to allow more messages to arrive
-    console.log(`⏱️  Waiting ${DEBOUNCE_DELAY}ms for more messages...`)
-    await delay(DEBOUNCE_DELAY)
-
     // Fetch all unprocessed messages from this phone in the recent window
     const recentTime = new Date(Date.now() - DEBOUNCE_WINDOW)
     const unprocessedMessages = await prisma.whatsAppMessage.findMany({
@@ -300,29 +296,24 @@ async function handleTextMessage(
         return
       }
 
-      // Database-based debouncing - check if there are recent unprocessed messages
+      // Database-based debouncing - every message starts its own timer
       console.log(`🤖 Message from ${client.name}: "${text}"`)
+      console.log(`⏱️  Starting ${DEBOUNCE_DELAY}ms debounce timer for this message`)
 
-      // Check if there are any other recent unprocessed messages from this client
-      const recentTime = new Date(Date.now() - DEBOUNCE_WINDOW)
-      const recentUnprocessedCount = await prisma.whatsAppMessage.count({
-        where: {
-          fromPhone: from,
-          processed: false,
-          messageType: 'text',
-          timestamp: { gte: recentTime },
-          id: { not: storedMessageId } // Exclude current message
-        }
+      // Wait for debounce delay
+      await delay(DEBOUNCE_DELAY)
+
+      // After delay, check if this message is still unprocessed
+      const currentMessage = await prisma.whatsAppMessage.findUnique({
+        where: { id: storedMessageId }
       })
 
-      if (recentUnprocessedCount > 0) {
-        // There are other unprocessed messages - they're being batched
-        console.log(`📦 Found ${recentUnprocessedCount} other unprocessed messages. Skipping processing (will be batched).`)
+      if (!currentMessage || currentMessage.processed) {
+        console.log(`✅ Message already processed by earlier batch, skipping`)
         return
       }
 
-      // This is the first/only message - process it after debounce delay
-      console.log(`🎯 First message in potential batch. Starting debounce timer.`)
+      console.log(`🚀 Timer expired, processing all unprocessed messages for ${from}`)
       await processBatchedMessages(from, storedMessageId)
       return
     }
